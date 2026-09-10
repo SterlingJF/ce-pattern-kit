@@ -1,0 +1,10 @@
+{
+  "name": "react-shadcn-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:component-layers": "node --import tsx --test tools/ce-pattern/component-layers.test.ts && tsx tools/ce-pattern/check-component-layers.ts components app",
+    "add:shadcn": "node tools/ce-pattern/add-shadcn-items.mjs"
+  }
+}

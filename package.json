@@ -1,0 +1,36 @@
+{
+  "name": "ce-pattern-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.2.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "install:frozen": "pnpm install --frozen-lockfile",
+    "install:unlock": "pnpm install --no-frozen-lockfile",
+    "prepare": "husky",
+    "check": "pnpm run check:format && pnpm run check:justfile && pnpm run check:markdown && pnpm run check:types && pnpm run check:skill-assets && pnpm run test && pnpm run check:example",
+    "check:format": "prettier --check .",
+    "check:justfile": "just check_justfile_format",
+    "check:markdown": "markdownlint-cli2 \"**/*.md\"",
+    "check:types": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import tsx --test \"src/assets/tools/ce-pattern/component-layers.test.ts\" \"src/scripts/*.test.ts\"",
+    "format": "prettier --write .",
+    "format:markdown": "markdownlint-cli2 --fix \"**/*.md\"",
+    "check:example": "tsx src/assets/tools/ce-pattern/check-component-layers.ts examples/react-shadcn/components examples/react-shadcn/app && pnpm --filter @acme/components check && pnpm --filter @acme/app check",
+    "regenerate:example": "node tools/regenerate-example.mjs",
+    "sync:skill-assets": "node tools/sync-skill-assets.mjs",
+    "check:skill-assets": "node tools/sync-skill-assets.mjs --check"
+  },
+  "devDependencies": {
+    "@types/node": "26.3.0",
+    "husky": "9.1.7",
+    "markdownlint-cli2": "0.23.2",
+    "oxc-parser": "0.147.0",
+    "prettier": "3.9.6",
+    "tsx": "4.23.12",
+    "typescript": "7.0.2"
+  }
+}

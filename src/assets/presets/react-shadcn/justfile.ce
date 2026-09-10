@@ -1,0 +1,12 @@
+
+# Vendor registry items into component-core with the pinned shadcn CLI and normalize alias imports.
+add_shadcn_atoms UI_NAME OVERWRITE='false' BASE='__CE_STYLE__':
+  #!/usr/bin/env bash
+  set -euo pipefail
+  flags=()
+  case {{ quote(OVERWRITE) }} in
+    true) flags+=(--overwrite) ;;
+    false) ;;
+    *) printf "OVERWRITE must be true or false, received '%s'.\n" {{ quote(OVERWRITE) }} >&2; exit 1 ;;
+  esac
+  node tools/ce-pattern/add-shadcn-items.mjs --style {{ quote(BASE) }} "${flags[@]}" -- {{ UI_NAME }}

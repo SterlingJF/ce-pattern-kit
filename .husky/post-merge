@@ -1,0 +1,4 @@
+if git diff --name-only 'HEAD@{1}' HEAD 2>/dev/null | grep -qx 'pnpm-lock.yaml'; then
+  pnpm install --frozen-lockfile --ignore-scripts
+fi
+just scan_dependencies_or_warn

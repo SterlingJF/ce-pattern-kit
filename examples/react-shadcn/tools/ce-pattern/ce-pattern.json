@@ -1,0 +1,17 @@
+{
+  "tooling": "tools/ce-pattern",
+  "packageManager": "pnpm",
+  "library": {
+    "dir": "components",
+    "alias": "@acme/components",
+    "preset": "react-shadcn",
+    "style": "base-vega"
+  },
+  "consumers": [
+    {
+      "dir": "app",
+      "alias": "@acme/app",
+      "layers": "all"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+packages:
+  - examples/react-shadcn/components
+  - examples/react-shadcn/app
+
+minimumReleaseAge: 20160
+
+overrides:
+  smol-toml: 1.7.1

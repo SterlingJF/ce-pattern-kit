@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "osvVulnerabilityAlerts": true,
+  "minimumReleaseAge": "14 days",
+  "rangeStrategy": "pin",
+  "packageRules": [
+    {
+      "matchDepTypes": ["devDependencies", "dev"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    }
+  ],
+  "ignorePaths": ["skills/**"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^src/assets/versions\\.json$/"],
+      "matchStrings": [
+        "\"(?<depName>[^\"]+)\": \"(?<currentValue>\\d[^\"]+)\""
+      ],
+      "datasourceTemplate": "npm"
+    }
+  ]
+}
