@@ -19,7 +19,7 @@ does the counting; this skill reads its verdict and acts on it.
 
 ## Rules
 
-- Ask in the quick guide's order: design still being defined, then patterns; unmodified vendor code, then core; exactly one source with at least as many exports per kind, then elements; otherwise patterns.
+- Ask in the quick guide's order: design still being defined, then patterns; unmodified vendor code, then core; zero or one component-layer source with at least as many exports per kind, then elements; otherwise patterns.
 - Never edit core. Enrich in elements, compose in patterns.
 - Rule 4 is sticky: a pattern stays a pattern when its counts drift; only Rule 6 path 4 moves it up, and only when its design is settled.
 - Never pad exports to pass a count. A bundle object re-exporting the imports is the tell.

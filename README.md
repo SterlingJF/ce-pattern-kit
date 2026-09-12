@@ -67,11 +67,11 @@ src/
 └── component-patterns/  # Composed, purpose-specific combinations
 ```
 
-| Layer        | What it is                                      | Import → export                                |
-| ------------ | ----------------------------------------------- | ---------------------------------------------- |
-| **core**     | Vendor components                               | Exact support edges below.                     |
-| **elements** | Your UI vocabulary — enriched variants of core. | 1 source; at least as many exports as imports. |
-| **patterns** | Composed, purpose-specific combinations.        | 2+ sources; fewer exports than imports.        |
+| Layer        | What it is                                                    | Import → export                                   |
+| ------------ | ------------------------------------------------------------- | ------------------------------------------------- |
+| **core**     | Vendor components                                             | Exact support edges below.                        |
+| **elements** | Your UI vocabulary — local foundations and enriched variants. | 0-1 sources; at least as many exports as imports. |
+| **patterns** | Composed, purpose-specific combinations.                      | 2+ sources; fewer exports than imports.           |
 
 ## Rules
 
@@ -85,13 +85,17 @@ Nothing in core is hand-edited. If you need to change behaviour, wrap it in elem
 Imports emitted by the vendor may resolve to package support hooks or utilities; that does not move
 the vendor file out of core.
 
-### Rule 2 — Elements: one source, same or more out
+### Rule 2 — Elements: zero or one source, same or more out
 
 A file belongs in `component-elements` if and only if:
 
-1. It imports from **exactly one** source file (core or another elements file), and
+1. It imports from **at most one** component-layer source file (core or another elements file), and
 2. For each kind (types/interfaces, functions/constants), it exports **at least as many** of that kind as it imported, and
 3. Exports within each kind are **logically interchangeable** with what was imported — same kind, same contract. Locally-defined exports of the same kind count toward the total.
+
+Zero sources means the element is a locally authored foundation rather than a wrapper around a core
+or elements component. Whether the repository uses a component registry elsewhere does not change
+that classification.
 
 > A shadcn `Button` file that exports `ButtonPrimary`, `ButtonGhost`, and `ButtonLoading` is an element.
 > Locally-defined exports of the same kind (e.g. a `BUTTON_SIZES` constant) also count toward the total.
@@ -158,11 +162,11 @@ When you're not sure where a new file belongs, ask in order:
 2. Is it unmodified vendor code?
    └─ Yes → CORE
 
-3. Does it import from exactly one source?
+3. Does it import from zero or one component-layer source?
    └─ Yes → Does it have at least as many exports as it imported?
               └─ Yes, and each kind of export matches its imported kind → ELEMENTS
               └─ No (exports fewer) → PATTERNS
-   └─ No (multiple sources) → PATTERNS
+   └─ No (two or more sources) → PATTERNS
 ```
 
 ## Why this system works

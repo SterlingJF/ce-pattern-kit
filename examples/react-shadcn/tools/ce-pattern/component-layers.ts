@@ -419,7 +419,7 @@ function classifyFile(
   if (layer === "elements") {
     if (sources.size > 1) {
       refusals.push(
-        `Rule 2: ${sources.size} sources; elements import from exactly one`,
+        `Rule 2: ${sources.size} sources; elements import from at most one`,
       );
     }
     if (star) refusals.push("Rule 2: star export cannot be counted");

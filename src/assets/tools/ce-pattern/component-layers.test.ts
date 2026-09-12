@@ -70,9 +70,16 @@ test("a valid tree classifies clean", () => {
   ]);
 });
 
+test("a locally authored element with no component-layer source is valid", () => {
+  const report = scenario("valid");
+  const prose = file(report, "component-elements/prose.tsx");
+  assert.deepEqual(prose?.sources, []);
+  assert.deepEqual(prose?.refusals, []);
+});
+
 test("an element with two sources is refused", () => {
   assert.deepEqual(refusals(scenario("elements-two-sources")), [
-    "component-elements/split.tsx: Rule 2: 2 sources; elements import from exactly one",
+    "component-elements/split.tsx: Rule 2: 2 sources; elements import from at most one",
   ]);
 });
 
