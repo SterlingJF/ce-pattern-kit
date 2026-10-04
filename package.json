@@ -25,7 +25,7 @@
     "check:skill-assets": "node tools/sync-skill-assets.mjs --check"
   },
   "devDependencies": {
-    "@types/node": "26.3.0",
+    "@types/node": "26.6.2",
     "husky": "9.1.7",
     "markdownlint-cli2": "0.23.3",
     "oxc-parser": "0.147.0",
