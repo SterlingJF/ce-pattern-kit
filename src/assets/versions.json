@@ -1,6 +1,6 @@
 {
   "tooling": {
-    "oxc-parser": "0.147.0",
+    "oxc-parser": "0.151.0",
     "tsx": "4.23.12"
   },
   "presets": {
