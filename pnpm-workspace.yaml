@@ -5,4 +5,7 @@ packages:
 minimumReleaseAge: 20160
 
 overrides:
-  smol-toml: 1.7.1
+  smol-toml: 1.9.0
+minimumReleaseAgeExclude:
+  # Renovate security update: smol-toml@1.9.0
+  - smol-toml@1.9.0
