@@ -5,4 +5,6 @@ packages:
 minimumReleaseAge: 20160
 
 overrides:
-  smol-toml: 1.7.1
+  katex: 0.18.11
+  markdown-it: 15.0.3
+  smol-toml: 1.9.1
