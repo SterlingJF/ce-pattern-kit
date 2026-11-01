@@ -75,8 +75,9 @@ src/
 
 ## Rules
 
-The layer rules classify component implementations only. Colocated stories, story metadata, and fixtures
-are treated as support artifacts rather than additional core capabilities.
+Rules 1 to 6 place component files in layers; Rules 7 and 8 keep core stock and make every look a
+token. The layer rules classify component implementations only. Colocated stories, story metadata,
+and fixtures are treated as support artifacts rather than additional core capabilities.
 
 ### Rule 1 — Core is read-only
 
@@ -151,6 +152,36 @@ Prototypes resolve part by part. There are four valid paths:
 
 A prototype that matures by relying on other patterns remains a pattern (Rule 4).
 
+### Rule 7 — Core is never forked
+
+Core holds the vendor's files as the vendor ships them, at the pinned release. A modified copy of a
+vendor item, kept anywhere in the library and vendored into core, is a fork, and forks are not
+allowed.
+
+- Core is filled from the vendor's registry by item name only, never from a local path or a
+  modified item.
+- Core can be checked: comparing it against the pinned release finds nothing but the vendor's own
+  formatting.
+- A look or behaviour the vendor doesn't ship is built in elements (Rule 2) or set in the token
+  map (Rule 8), not in core.
+
+### Rule 8 — Looks come from the token map
+
+One token map holds every design value: colours for light and dark, spacing, type, radii, motion,
+elevation and blur. Components name tokens; they never carry raw values.
+
+- **Only elements restyle core.** An element may change a core component's layout, spacing, type,
+  colour, shape and effects, with token classes only.
+- **Patterns and consumers only place core components.** They may set layout around a core
+  component, never its look.
+- **Effects are tokens too.** Shadows and blurs come from the map; blend modes are not used.
+- **Classes are written out.** No raw colours, arbitrary values, inline styles, or class names
+  built at runtime.
+- **Native controls go through core.** A plain HTML element with a core equivalent, such as
+  `<button>` or `<table>`, is replaced by the core component.
+
+A value the map lacks is added to the map on purpose, then used. It is never written inline.
+
 ## Classification Quick Guide
 
 When you're not sure where a new file belongs, ask in order:
@@ -169,9 +200,14 @@ When you're not sure where a new file belongs, ask in order:
    └─ No (two or more sources) → PATTERNS
 ```
 
+To change how a core component looks, add or reuse a token (Rule 8), then apply it in an element.
+Never in core (Rule 7), never in a pattern.
+
 ## Why this system works
 
 The rules are mechanical on purpose — component classification follows a count, not a judgment call.
+Rules 7 and 8 are checked the same way: core against a diff from the registry, looks against a lint
+that reads the theme generated from the token map.
 
 The layers also self-document. A file in `component-elements` promises a stable, reusable UI vocabulary.
 A file in `component-patterns` promises a purposeful composition of lower-layer pieces.
@@ -230,7 +266,7 @@ target/
 └── pnpm-workspace.yaml or workspaces    library and consumers added, per your package manager
 ```
 
-Layer directories in a consumer are checked by the same six rules. Whether an app holds layers
+Layer directories in a consumer are checked by the same rules. Whether an app holds layers
 at all is a per-repository choice; the pattern holds no opinion, and the skill asks. A
 `components/` directory beside layer directories is reported as advice, never refused.
 

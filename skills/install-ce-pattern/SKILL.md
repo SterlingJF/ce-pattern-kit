@@ -14,7 +14,7 @@ owner can decide, and records what happened. The rules themselves live in
 ## Skill Terminology
 
 - kit: this repository, `SterlingJF/ce-pattern-kit`. Never a runtime dependency of a target.
-- pattern: the CE pattern, the six rules and the quick guide in the rules document.
+- pattern: the CE pattern, the eight rules and the quick guide in the rules document.
 - layer: one of `component-core`, `component-elements`, `component-patterns`, at a package root or under its `src/`.
 - library: the shared component package the pattern organizes. A source-consumed workspace package on the golden path.
 - consumer: any other workspace package that depends on the library. It may hold no layers, `component-patterns` only, or all three with `component-core` as a barrel over the library.
