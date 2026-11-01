@@ -5,8 +5,8 @@ Toolkit for the CE Pattern, a minimal, rule-based structure for organizing UI co
 CE Pattern (stands for "core, element, pattern", read as _"see pattern"_) is the component
 folder structure I use with my work, projects, and team. It classifies and places a component
 file by what it imports and exports. This project carries the rules, a classifier that applies them,
-the component registry tooling, and the lint and token map that keep core stock and every look a
-token.
+the component registry tooling, the lint and token map that keep core stock and every look a
+token, and the copy catalogue every user-facing text comes from.
 
 **This project is meant to be vendored.** There is no npm package, and nothing in your repository
 imports it at runtime. Copy the tooling into your repository, read it, and change it to match your
@@ -86,7 +86,7 @@ src/
 ## Rules
 
 Rules 1 to 6 place component files in layers; Rules 7 and 8 keep core stock and make every look a
-token. The layer rules classify component implementations only. Colocated stories, story metadata,
+token; Rule 9 makes every text a catalogue entry. The layer rules classify component implementations only. Colocated stories, story metadata,
 and fixtures are treated as support artifacts rather than additional core capabilities.
 
 ### Rule 1 — Core is read-only
@@ -192,6 +192,23 @@ elevation and blur. Components name tokens; they never carry raw values.
 
 A value the map lacks is added to the map on purpose, then used. It is never written inline.
 
+### Rule 9 — Copy comes from the catalogue
+
+One catalogue holds every user-facing text, one file per language, keyed the same in each. It is
+to words what the token map is to looks.
+
+- **Components name keys; they never carry text.** Elements, patterns and consumers render
+  `t("search.label")`, never `Search`. That covers text in markup and in what a person reads or
+  hears: `aria-label`, `title`, `placeholder`, `alt` and `label`.
+- **The base language is the contract.** A key used in code must exist in the base language, and
+  every other language has the same keys and placeholders. Plural forms may differ by language.
+- **Core keeps the vendor's text.** Labels that ship inside core are the vendor's (Rule 7). To
+  change one, pass the catalogue's text into the core component from an element.
+- **Sample data is not copy.** Names, IDs and dates that come from data are passed in, not
+  catalogued.
+
+A text the catalogue lacks is added to the base language first, then used.
+
 ## Classification Quick Guide
 
 When you're not sure where a new file belongs, ask in order:
@@ -216,8 +233,8 @@ Never in core (Rule 7), never in a pattern.
 ## Why this system works
 
 The rules are mechanical on purpose — component classification follows a count, not a judgment call.
-Rules 7 and 8 are checked the same way: core against a diff from the registry, looks against a lint
-that reads the theme generated from the token map.
+Rules 7, 8 and 9 are checked the same way: core against a diff from the registry, looks against a
+lint that reads the theme generated from the token map, and copy against the catalogue.
 
 The layers also self-document. A file in `component-elements` promises a stable, reusable UI vocabulary.
 A file in `component-patterns` promises a purposeful composition of lower-layer pieces.
@@ -265,6 +282,7 @@ target/
 │   ├── README_COMPONENT_SYSTEM.md       the rules
 │   ├── add-shadcn-items.mjs             registry import with the pinned CLI and alias rewrite
 │   ├── check-shadcn-core.mjs            Rule 7: core compared with the pinned registry release
+│   ├── check-copy.mjs                   Rule 9: no literal text; languages match the base
 │   ├── versions.json  ce-pattern.json   pins; recorded choices (tooling dir, library, consumers)
 │   └── UPSTREAM.md                      provenance: source, ref, commit, paths, deviations
 ├── components/                          @scope/components: package.json, tsconfig.json,
@@ -272,6 +290,7 @@ target/
 │   ├── .oxlintrc.json                   the Rule 8 lint, pinned oxlint and @shadcn/lint
 │   ├── tokens.json                      the token map: palette, light and dark roles, theme scales
 │   ├── generated/tokens.css             its generated theme, imported by styles.css
+│   ├── copy/en.json  lib/i18n.ts        the copy catalogue and its typed i18next instance
 │   ├── lib/utils.ts  index.ts
 │   └── component-{core,elements,patterns}/   appear with their first file
 ├── app/                                 consumer: workspace dependency on the library;
@@ -279,7 +298,7 @@ target/
 ├── justfile                             # --- CE pattern --- from install, and
 │                                        # --- CE pattern: react-shadcn --- from the preset
 ├── package.json                         check:component-layers, add:shadcn, check:shadcn-core,
-│                                        generate:tokens, check:tokens, lint:components
+│                                        generate:tokens, check:tokens, lint:components, check:copy
 └── pnpm-workspace.yaml or workspaces    library and consumers added, per your package manager
 ```
 
@@ -435,6 +454,31 @@ additions to the config, not changes to core:
 - **A plain element with no core equivalent yet**: vendor one, or remove that tag from
   `react/forbid-elements` on purpose.
 
+### The copy catalogue
+
+The `react-shadcn` preset gives the library a catalogue in i18next's own format, and nothing is
+generated from it:
+
+- **`copy/en.json`:** the base language, the source itself. Keys nest by area
+  (`search.label`); plurals use `_one` and `_other`; placeholders are `{{name}}`. Add a language
+  as `copy/<language>.json` with the same keys.
+- **`lib/i18n.ts`:** the library's own i18next instance with the catalogue loaded inline, and
+  `useCopy()` for components. It hands the base language to i18next's types, so a key that isn't
+  in the catalogue fails the type-check.
+- **`check:copy`** (`just check_copy`): refuses literal text in elements, patterns and consumer
+  layers, and any language whose keys or placeholders differ from the base. It reads the
+  catalogue's folder and base language from `ce-pattern.json` (`library.copy`), and skips core and
+  support files.
+
+```tsx
+const t = useCopy();
+return <Button aria-label={t("search.label")}>{t("search.submit")}</Button>;
+```
+
+For a library that already has a catalogue, record where it is instead of moving it:
+`"copy": { "dir": "src/copy", "base": "en" }` in the library entry of `ce-pattern.json`.
+`add-styling.mjs` vendors the check and says so in its `next:` lines.
+
 - **Add a consumer:** `add-consumer.mjs --dir <dir> --layers none|patterns|all`, then rerun the
   check. The roots list in `check:component-layers` follows `ce-pattern.json`.
 - **Reclassify:** a pattern reported under Rule 6 path 4 moves to elements when its design is
@@ -463,7 +507,7 @@ In this repository:
 | `check_renovate_config` | Validate `renovate.json`                                         |
 
 `just check` runs: Prettier, justfile format, Markdown lint, type-check, skill-asset sync, tests,
-and the example's classification, type-checks and Rule 8 lint.
+and the example's classification, type-checks, Rule 8 lint and Rule 9 copy check.
 
 In a target repository, after install:
 
@@ -477,6 +521,7 @@ In a target repository, after install:
 | `just generate_tokens`                               | Regenerate the theme from the token map (Rule 8)     |
 | `just check_tokens`                                  | Fail when the generated theme is out of date         |
 | `just lint_components`                               | Lint the library for Rule 8                          |
+| `just check_copy`                                    | Refuse literal text; compare languages (Rule 9)      |
 | `<pm> run lint:components`                           | The same through your package manager                |
 | `<pm> run add:shadcn button`                         | The same through your package manager                |
 | `tsx tools/ce-pattern/check-component-layers.ts a b` | Classify arbitrary roots                             |
@@ -497,6 +542,9 @@ In a target repository, after install:
 - The token map covers colours and Tailwind's theme namespaces only; values with no namespace,
   such as durations, stay in your own CSS. No build setup: the library is source-consumed by its
   consumers.
+- The copy check reads JSX in element, pattern and consumer layers. Text held in plain data, such
+  as an array of option labels in a `.ts` file, isn't seen; keep labels as keys there. The
+  catalogue tooling ships with the `react-shadcn` preset and i18next only.
 
 ## Development
 

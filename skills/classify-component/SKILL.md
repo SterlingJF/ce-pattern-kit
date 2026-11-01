@@ -1,6 +1,6 @@
 ---
 name: classify-component
-description: Places a component file in the right CE pattern layer by the count on its imports and exports, runs the vendored layer checker, reads the verdict for that file, and resolves a refusal or an advisory by the rules' own paths, including Rule 8 lint refusals on how a component looks. Use when invoked via `/classify-component`, or when the user asks where a component belongs, whether a file is an element or a pattern, or how to fix a layer check or styling lint failure.
+description: Places a component file in the right CE pattern layer by the count on its imports and exports, runs the vendored layer checker, reads the verdict for that file, and resolves a refusal or an advisory by the rules' own paths, including Rule 8 lint refusals on how a component looks and Rule 9 copy refusals on literal text. Use when invoked via `/classify-component`, or when the user asks where a component belongs, whether a file is an element or a pattern, or how to fix a layer check, styling lint or copy check failure.
 ---
 
 # Classify Component
@@ -16,6 +16,7 @@ does the counting; this skill reads its verdict and acts on it.
 - refusal: a Rule 2 or Rule 5 violation; the check exits non-zero.
 - advisory: a pattern that would pass Rule 2 in place, with one source (Rule 6 path 4) or none (a prototype candidate); reported only where the package has an elements layer, never failing.
 - prototype: a file placed in patterns while its design is unsettled (Rule 6).
+- copy refusal: a Rule 9 finding from `check:copy`, literal text in an element, pattern or consumer layer, or a language whose keys differ from the base.
 - lint refusal: a Rule 8 finding from `lint:components`, such as a restyled core component in a pattern, a raw colour, or a class the theme doesn't define.
 
 ## Rules
@@ -34,7 +35,8 @@ does the counting; this skill reads its verdict and acts on it.
 4. On a refusal, act on the message: two sources or fewer exports means move to patterns; an upward import means move the file down or the dependency up; a missing file means fix the path.
 5. On an advisory, read which one: "single-source enrichment" means the file is an element once its design is settled; "no layer source" means a hand-built file, a prototype until its parts move out along Rule 6 or it is reclassified. Leave either unless the design is settled, then move to elements and re-run.
 6. If the file sets classes on core or elements components, run `lint:components` and act on it: a `no-restyle` refusal in a pattern means the look moves into an element; a raw colour, arbitrary value, or unknown class means the value becomes a token in `tokens.json` first, then `generate:tokens`, then its class. Never loosen the lint config to pass.
-7. Report the verdict line and what moved.
+7. If the file renders text, run `check:copy`: a literal-text refusal means the text becomes a key in the base language's catalogue file first, then `t("<key>")` from `useCopy()` (Rule 9). Never catalogue sample data, and never silence the check.
+8. Report the verdict line and what moved.
 
 ## Anti-patterns
 

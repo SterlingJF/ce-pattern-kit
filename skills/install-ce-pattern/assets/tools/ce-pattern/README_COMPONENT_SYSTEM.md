@@ -20,7 +20,7 @@ src/
 ## Rules
 
 Rules 1 to 6 place component files in layers; Rules 7 and 8 keep core stock and make every look a
-token. The layer rules classify component implementations only. Colocated stories, story metadata,
+token; Rule 9 makes every text a catalogue entry. The layer rules classify component implementations only. Colocated stories, story metadata,
 and fixtures are treated as support artifacts rather than additional core capabilities.
 
 ### Rule 1 — Core is read-only
@@ -126,6 +126,23 @@ elevation and blur. Components name tokens; they never carry raw values.
 
 A value the map lacks is added to the map on purpose, then used. It is never written inline.
 
+### Rule 9 — Copy comes from the catalogue
+
+One catalogue holds every user-facing text, one file per language, keyed the same in each. It is
+to words what the token map is to looks.
+
+- **Components name keys; they never carry text.** Elements, patterns and consumers render
+  `t("search.label")`, never `Search`. That covers text in markup and in what a person reads or
+  hears: `aria-label`, `title`, `placeholder`, `alt` and `label`.
+- **The base language is the contract.** A key used in code must exist in the base language, and
+  every other language has the same keys and placeholders. Plural forms may differ by language.
+- **Core keeps the vendor's text.** Labels that ship inside core are the vendor's (Rule 7). To
+  change one, pass the catalogue's text into the core component from an element.
+- **Sample data is not copy.** Names, IDs and dates that come from data are passed in, not
+  catalogued.
+
+A text the catalogue lacks is added to the base language first, then used.
+
 ## Classification Quick Guide
 
 When you're not sure where a new file belongs, ask in order:
@@ -150,8 +167,8 @@ Never in core (Rule 7), never in a pattern.
 ## Why this system works
 
 The rules are mechanical on purpose — component classification follows a count, not a judgment call.
-Rules 7 and 8 are checked the same way: core against a diff from the registry, looks against a lint
-that reads the theme generated from the token map.
+Rules 7, 8 and 9 are checked the same way: core against a diff from the registry, looks against a
+lint that reads the theme generated from the token map, and copy against the catalogue.
 
 The layers also self-document. A file in `component-elements` promises a stable, reusable UI vocabulary.
 A file in `component-patterns` promises a purposeful composition of lower-layer pieces.
