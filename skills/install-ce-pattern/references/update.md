@@ -16,7 +16,10 @@ SterlingJF/ce-pattern-kit#<ref> --skill install-ce-pattern` followed by `node
    local deletions. Changed only upstream: take incoming. Changed only locally: keep local. Changed
    both ways: merge, or ask. Deleted upstream but changed locally: ask. `ce-pattern.json` and
    `UPSTREAM.md` are always local. A clean text merge is not evidence the rules still agree; read
-   the checker's diff.
+   the checker's diff. `check-shadcn-core.mjs` and `generate-tokens.mjs` merge like any tooling
+   file. The library's `.oxlintrc.json`, `tokens.json` and `generated/` are the owner's and are
+   not merged; compare the incoming preset's lint config by hand and adopt a rule change only with
+   the owner.
 4. Reconcile scripts and pins. `check:component-layers` keeps the target's roots. Dependency pins
    move to the incoming `versions.json` only with the owner's approval and only if they clear the
    target's release-age gate.

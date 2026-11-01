@@ -1,6 +1,6 @@
 ---
 name: install-ce-pattern
-description: Installs the CE pattern (core, elements, patterns) into a repository and keeps it there. Vendors the layer checker, its tests and fixtures, the rules document, and the registry import script into one tooling directory; scaffolds a shared component library on a preset or a bare package; wires consumer packages; records provenance; and updates an existing installation by three-way merge. Use when invoked via `/install-ce-pattern`, or when the user asks to set up, adopt, or update component layers, a shared component library, or the CE pattern in a repo.
+description: Installs the CE pattern (core, elements, patterns) into a repository and keeps it there. Vendors the layer checker, its tests and fixtures, the rules document, the registry import script, the core check, and the token generator into one tooling directory; scaffolds a shared component library on a preset or a bare package, with the Rule 8 lint and a starter token map on the react-shadcn preset; wires consumer packages; records provenance; and updates an existing installation by three-way merge. Use when invoked via `/install-ce-pattern`, or when the user asks to set up, adopt, or update component layers, a shared component library, or the CE pattern in a repo.
 ---
 
 # Install CE Pattern
@@ -19,9 +19,10 @@ owner can decide, and records what happened. The rules themselves live in
 - library: the shared component package the pattern organizes. A source-consumed workspace package on the golden path.
 - consumer: any other workspace package that depends on the library. It may hold no layers, `component-patterns` only, or all three with `component-core` as a barrel over the library.
 - preset: a framework and registry pairing the scripts scaffold deterministically. Today: `react-shadcn`. `none` scaffolds a bare package.
-- tooling directory: `tools/ce-pattern/` in the target, the only place kit-owned files live. Holds the checker, CLI, tests, fixtures, rules document, `versions.json`, `ce-pattern.json`, `add-shadcn-items.mjs`, `UPSTREAM.md`.
+- tooling directory: `tools/ce-pattern/` in the target, the only place kit-owned files live. Holds the checker, CLI, tests, fixtures, rules document, `versions.json`, `ce-pattern.json`, `add-shadcn-items.mjs`, `check-shadcn-core.mjs`, `generate-tokens.mjs`, `UPSTREAM.md`.
 - provenance: `UPSTREAM.md`, written by `write-upstream.mjs`, naming source, ref, commit, installed paths, and deviations.
 - path: one of fresh install, adopt, add-consumer, update. Detection is mechanical (see Process).
+- token map: `<library>/tokens.json`, the single source of design values (Rule 8); `generate:tokens` writes `<library>/generated/tokens.css` from it.
 
 ## Rules
 
@@ -38,12 +39,12 @@ owner can decide, and records what happened. The rules themselves live in
 1. Choose the path. Read the repo's README and any agent instructions, run `git status` (read-only), then detect: `tools/ce-pattern/UPSTREAM.md` present means update, follow `references/update.md`; any layer directory present with no tooling directory means adopt; a tooling directory with a library recorded and a new package to wire means add-consumer; otherwise fresh install. State the detected path and confirm it in round 1.
 2. Interview. Run the rounds in `references/interview.md` that the path needs. Record each answer.
 3. Vendor. From the target root: `node <skill-directory>/scripts/install.mjs` (`--into <dir>` for another destination; `--roots a,b` on adopt so the check covers the existing layers; `--package-manager <name>` when detection is wrong or the repo has no lockfile yet). This writes the tooling directory, `ce-pattern.json` with the detected manager, and the `check:component-layers` script.
-4. Scaffold the library (fresh install only). `node <skill-directory>/scripts/scaffold-library.mjs --preset react-shadcn|none --dir <dir> --alias <alias> [--style <style>]`. This renders the preset, adds the workspace entry, the justfile section, and the `add:shadcn` script.
+4. Scaffold the library (fresh install only). `node <skill-directory>/scripts/scaffold-library.mjs --preset react-shadcn|none --dir <dir> --alias <alias> [--style <style>]`. This renders the preset, adds the workspace entry, the justfile section, and the `add:shadcn` script. On `react-shadcn` it also writes the library's `.oxlintrc.json` (the Rule 8 lint), `tokens.json` and `generated/tokens.css`, vendors `check-shadcn-core.mjs` and `generate-tokens.mjs`, and adds `check:shadcn-core`, `generate:tokens`, `check:tokens`, and `lint:components`.
 5. Wire consumers. Per consumer: `node <skill-directory>/scripts/add-consumer.mjs --dir <dir> --layers none|patterns|all [--create --alias <alias>]`.
 6. Dependencies. Add `oxc-parser` and `tsx` as dev dependencies at the root with the detected manager, at the versions under `tooling` in `assets/versions.json`, lifecycle scripts disabled (for pnpm: `pnpm add -D -w oxc-parser@<v> tsx@<v> --ignore-scripts`; npm: `npm install -D --ignore-scripts`; yarn: `yarn add -D`; bun: `bun add -d`). Then install so the library and consumers resolve.
-7. Verify. Run `check:component-layers` with the manager's run command (the vendored tests, then the classification over every recorded root) and the target's own type-check. Fix a refusal by moving the file or its exports, never by editing the checker or the fixtures.
+7. Verify. Run `check:component-layers` with the manager's run command (the vendored tests, then the classification over every recorded root) and the target's own type-check. On `react-shadcn`, also run `check:tokens` and `lint:components`. Fix a refusal by moving the file or its exports, by giving a look to an element, or by adding a token, never by editing the checker, the fixtures, or the lint config to pass.
 8. Provenance. `node <skill-directory>/scripts/write-upstream.mjs --ref <ref> --commit <sha>` with the ref and commit the skill was installed from (`skills-lock.json` records them). If either cannot be established, pass `unknown`.
-9. Hand back. The list of files written, the deviations, the verification output, and the commands the owner runs next: install, the first registry import (`just add_shadcn_atoms button` or `add:shadcn button` through the manager's run command), the commit.
+9. Hand back. The list of files written, the deviations, the verification output, and the commands the owner runs next: install, the first registry import (`just add_shadcn_atoms button` or `add:shadcn button` through the manager's run command), `check:shadcn-core` after it (it needs the network), the commit.
 
 ## Anti-patterns
 
@@ -51,12 +52,14 @@ owner can decide, and records what happened. The rules themselves live in
 - Resolving remembered versions. Every pin comes from `assets/versions.json` or the preset's `package.json`, never from memory.
 - Inventing a preset. A framework or registry the kit does not ship is handled by hand, confirmed round by round, and recorded as deviations; it is not written into `assets/presets/`.
 - Deciding for the owner whether an app holds layers. The pattern holds no opinion; the answer is per repo and per consumer.
+- Loosening the lint or the core check to make a file pass. A look moves to an element or the token map (Rules 7 and 8); a state or contract the library owns is added to the lint config on purpose, with the owner, and recorded as a deviation.
 
 ## Red flags
 
 - A tooling directory exists without `UPSTREAM.md`: provenance is unknown. Stop and ask before any write.
 - Layer directories exist but the package has no `name`: the checker cannot resolve the alias. Ask for the alias before vendoring.
 - A `components/` directory beside layer directories in a consumer: the checker reports it as advice; raise it in the hand-back, do not move files unasked.
+- A `registry/` folder in the library, or core files that differ from the registry: a fork (Rule 7). Report it with `check:shadcn-core`'s list; never re-vendor over it unasked, since the look it carries must move first.
 
 ## Deliverable
 

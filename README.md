@@ -5,7 +5,8 @@ Toolkit for the CE Pattern, a minimal, rule-based structure for organizing UI co
 CE Pattern (stands for "core, element, pattern", read as _"see pattern"_) is the component
 folder structure I use with my work, projects, and team. It classifies and places a component
 file by what it imports and exports. This project carries the rules, a classifier that applies them,
-and the component registry tooling.
+the component registry tooling, and the lint and token map that keep core stock and every look a
+token.
 
 **This project is meant to be vendored.** There is no npm package, and nothing in your repository
 imports it at runtime. Copy the tooling into your repository, read it, and change it to match your
