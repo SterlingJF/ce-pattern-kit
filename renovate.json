@@ -1,16 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "group:allNonMajor"],
+  "extends": ["config:recommended", "group:all"],
   "osvVulnerabilityAlerts": true,
   "minimumReleaseAge": "14 days",
   "rangeStrategy": "pin",
   "timezone": "America/New_York",
-  "schedule": ["* 12 * * *"],
-  "automergeSchedule": ["* 12 * * *"],
+  "schedule": ["* 12 * * 1"],
+  "automergeSchedule": ["* 12 * * 1"],
   "lockFileMaintenance": {
-    "enabled": true,
-    "automerge": true,
-    "schedule": ["* 12 * * *"]
+    "enabled": false
   },
   "packageRules": [
     {
@@ -20,6 +18,8 @@
     }
   ],
   "vulnerabilityAlerts": {
+    "groupName": "all dependencies",
+    "schedule": ["* 12 * * 1"],
     "automerge": true
   },
   "ignorePaths": ["skills/**"],
