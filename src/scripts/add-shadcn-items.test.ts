@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import {
+  layerDirs,
   parseArguments,
   parsePlan,
   refuseOverwrites,
@@ -105,5 +109,40 @@ test("files that differ from the registry are not overwritten without --overwrit
       [{ path: "component-core/kbd.tsx", action: "create" }],
       false,
     ),
+  );
+});
+
+const library = (paths: Record<string, string[]>) => {
+  const dir = mkdtempSync(join(tmpdir(), "ce-library-"));
+  writeFileSync(
+    join(dir, "components.json"),
+    JSON.stringify({
+      aliases: {
+        ui: "@/component-core",
+        components: "@/component-patterns",
+        lib: "@/lib",
+      },
+    }),
+  );
+  writeFileSync(
+    join(dir, "tsconfig.json"),
+    `{\n  // the project's own paths\n  "compilerOptions": { "paths": ${JSON.stringify(paths)} },\n  /* globs hold comment markers */\n  "include": ["**/*.ts"],\n}\n`,
+  );
+  return dir;
+};
+
+test("layer folders come from the project's components.json and tsconfig paths", () => {
+  const flat = library({ "@/*": ["./*"] });
+  assert.deepEqual(layerDirs(flat), {
+    core: join(flat, "component-core"),
+    patterns: join(flat, "component-patterns"),
+    lib: join(flat, "lib"),
+  });
+  const nested = library({ "@/*": ["./src/*"] });
+  assert.equal(layerDirs(nested).core, join(nested, "src/component-core"));
+  const unmapped = library({ "~/*": ["./*"] });
+  assert.throws(
+    () => layerDirs(unmapped),
+    /aliases\.ui "@\/component-core" matches no path in tsconfig\.json/,
   );
 });

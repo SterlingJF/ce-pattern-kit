@@ -7,6 +7,7 @@ import { test } from "node:test";
 import {
   driftedFiles,
   forkFolder,
+  summary,
   truncatedDiff,
 } from "../assets/presets/react-shadcn/check-shadcn-core.mjs";
 
@@ -60,4 +61,15 @@ test("a diff the CLI cut short cannot pass as clean", () => {
     true,
   );
   assert.equal(truncatedDiff(report('│ │ +"use client"')), false);
+});
+
+test("the verdict names the folder and how many files it checked", () => {
+  assert.equal(
+    summary("src/component-core", 8, []),
+    "src/component-core: 8 files match the registry.",
+  );
+  assert.equal(
+    summary("component-core", 0, []),
+    "component-core holds no core files, so nothing was checked.",
+  );
 });

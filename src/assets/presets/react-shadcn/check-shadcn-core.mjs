@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 
-import { managers } from "./add-shadcn-items.mjs";
+import { layerDirs, managers } from "./add-shadcn-items.mjs";
 
 const fileLine = /^├ (\S+) \((?:overwrite|create)\)/;
 const changeLine = /^│ │ ([-+])(?![-+]{2} )(.*)$/;
@@ -31,6 +31,15 @@ export function driftedFiles(report) {
     if (!vendorNoise.some((noise) => noise.test(text))) drifted.add(current);
   }
   return [...drifted];
+}
+
+export function summary(folder, checked, drifted) {
+  if (checked === 0)
+    return `${folder} holds no core files, so nothing was checked.`;
+  const files = checked === 1 ? "1 file matches" : `${checked} files match`;
+  return drifted.length === 0
+    ? `${folder}: ${files} the registry.`
+    : `${folder}: ${drifted.length} of ${checked} files differ from the registry.`;
 }
 
 export function forkFolder(dir) {
@@ -70,7 +79,7 @@ export function checkShadcnCore(root) {
   if (!manager)
     throw new Error(`Unknown package manager ${config.packageManager}`);
   const cli = `shadcn@${versions.presets["react-shadcn"].shadcn}`;
-  const core = join(dir, "component-core");
+  const core = layerDirs(dir).core;
   const names = existsSync(core)
     ? readdirSync(core)
         .filter((name) => name.endsWith(".tsx"))
@@ -85,7 +94,9 @@ export function checkShadcnCore(root) {
         manager.dlx,
         cli,
         name,
-        `component-core/${name}.tsx`,
+        relative(dir, join(core, `${name}.tsx`))
+          .split("\\")
+          .join("/"),
       );
     if (truncatedDiff(report))
       throw new Error(
@@ -93,7 +104,11 @@ export function checkShadcnCore(root) {
       );
     for (const file of driftedFiles(report)) drifted.add(file);
   }
-  return [...drifted];
+  return {
+    folder: relative(root, core).split("\\").join("/") || ".",
+    checked: names.length,
+    drifted: [...drifted],
+  };
 }
 
 if (
@@ -101,15 +116,15 @@ if (
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
   try {
-    const drift = checkShadcnCore(process.cwd());
+    const { folder, checked, drifted: drift } = checkShadcnCore(process.cwd());
     for (const file of drift)
       console.error(`${file} differs from the registry`);
     if (drift.length > 0) {
       console.error(
-        "component-core is the vendor's, never edited or forked (Rules 1 and 7). Re-vendor with `just add_shadcn_atoms '<names>' true`, and change the look in the token map or an element.",
+        `${summary(folder, checked, drift)} Core is the vendor's, never edited or forked (Rules 1 and 7). Re-vendor with \`just add_shadcn_atoms '<names>' true\`, and change the look in the token map or an element.`,
       );
       process.exitCode = 1;
-    } else console.log("component-core matches the registry.");
+    } else console.log(summary(folder, checked, drift));
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

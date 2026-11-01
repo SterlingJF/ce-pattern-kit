@@ -43,6 +43,67 @@ function refuseFork(name) {
   }
 }
 
+function stripJsonComments(text) {
+  let output = "";
+  let index = 0;
+  while (index < text.length) {
+    if (text[index] === '"') {
+      let end = index + 1;
+      while (end < text.length && text[end] !== '"')
+        end += text[end] === "\\" ? 2 : 1;
+      output += text.slice(index, end + 1);
+      index = end + 1;
+    } else if (text.startsWith("//", index)) {
+      while (index < text.length && text[index] !== "\n") index += 1;
+    } else if (text.startsWith("/*", index)) {
+      const end = text.indexOf("*/", index + 2);
+      index = end < 0 ? text.length : end + 2;
+    } else {
+      output += text[index];
+      index += 1;
+    }
+  }
+  return output.replace(/,(\s*[}\]])/g, "$1");
+}
+
+function readJsonc(path) {
+  return JSON.parse(stripJsonComments(readFileSync(path, "utf8")));
+}
+
+export function layerDirs(libraryDir) {
+  const aliases = readJsonc(join(libraryDir, "components.json")).aliases ?? {};
+  const options = existsSync(join(libraryDir, "tsconfig.json"))
+    ? (readJsonc(join(libraryDir, "tsconfig.json")).compilerOptions ?? {})
+    : {};
+  const baseUrl = options.baseUrl ?? ".";
+  const paths = Object.entries(options.paths ?? {}).filter(
+    ([key, targets]) => key.endsWith("/*") && targets?.[0]?.endsWith("/*"),
+  );
+  const locate = (name) => {
+    const alias = aliases[name];
+    if (typeof alias !== "string")
+      throw new Error(`components.json declares no aliases.${name}`);
+    for (const [key, targets] of paths) {
+      const prefix = key.slice(0, -1);
+      if (alias.startsWith(prefix))
+        return resolve(
+          libraryDir,
+          baseUrl,
+          targets[0].slice(0, -1),
+          alias.slice(prefix.length),
+        );
+    }
+    throw new Error(
+      `components.json aliases.${name} "${alias}" matches no path in tsconfig.json, so its folder is unknown`,
+    );
+  };
+  return {
+    core: locate("ui"),
+    patterns: locate("components"),
+    lib: locate("lib"),
+  };
+}
+
 export function parsePlan(report) {
   return stripVTControlCharacters(report)
     .split("\n")
@@ -186,8 +247,8 @@ export function addShadcnItems(options) {
       'Removed the npm package "cn" that the registry item declared; core imports resolve to lib/utils instead.',
     );
   }
-  for (const folder of ["component-core", "component-patterns", "lib"]) {
-    for (const file of listSourceFiles(join(libraryDir, folder))) {
+  for (const folder of Object.values(layerDirs(libraryDir))) {
+    for (const file of listSourceFiles(folder)) {
       const source = readFileSync(file, "utf8");
       const rewritten = rewriteAliasImports(source, library.alias);
       if (rewritten !== source) writeFileSync(file, rewritten);
