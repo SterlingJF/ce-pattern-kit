@@ -10,3 +10,19 @@ add_shadcn_atoms UI_NAME OVERWRITE='false' BASE='__CE_STYLE__':
     *) printf "OVERWRITE must be true or false, received '%s'.\n" {{ quote(OVERWRITE) }} >&2; exit 1 ;;
   esac
   node tools/ce-pattern/add-shadcn-items.mjs --style {{ quote(BASE) }} "${flags[@]}" -- {{ UI_NAME }}
+
+# Lint the library against Rule 8: token classes only, and only elements restyle core.
+lint_components:
+  __CE_RUN__ lint:components
+
+# Compare component-core with the pinned registry release and refuse a fork folder (Rule 7).
+check_shadcn_core:
+  __CE_RUN__ check:shadcn-core
+
+# Regenerate the library's theme CSS from its token map (Rule 8).
+generate_tokens:
+  __CE_RUN__ generate:tokens
+
+# Fail when the generated theme is out of date with the token map.
+check_tokens:
+  __CE_RUN__ check:tokens

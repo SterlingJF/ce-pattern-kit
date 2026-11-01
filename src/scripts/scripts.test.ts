@@ -152,6 +152,114 @@ test("scaffold-library renders the react-shadcn preset and wires the workspace",
   assert.match(again.stderr, /already records a library/);
 });
 
+test("scaffold-library ships the styling lint with the react-shadcn preset", () => {
+  const root = pnpmRoot();
+  assert.equal(run("install.mjs", root).status, 0);
+  const result = run(
+    "scaffold-library.mjs",
+    root,
+    "--alias",
+    "@acme/components",
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const lint = json(join(root, "components/.oxlintrc.json"));
+  assert.deepEqual(lint.jsPlugins, ["@shadcn/lint"]);
+  assert.deepEqual(lint.rules["shadcn/no-restyle"][1].allow, ["layout"]);
+  assert.deepEqual(lint.overrides[0].files, ["component-elements/**"]);
+  for (const rule of [
+    "shadcn/no-raw-colors",
+    "shadcn/no-arbitrary-values",
+    "shadcn/no-inline-styles",
+    "shadcn/no-unknown-classes",
+    "shadcn/require-static-classes",
+    "react/forbid-elements",
+  ]) {
+    assert.ok(lint.rules[rule], rule);
+  }
+  const pkg = json(join(root, "components/package.json"));
+  assert.equal(pkg.scripts.lint, "oxlint --deny-warnings .");
+  assert.equal(pkg.devDependencies.oxlint, "1.85.0");
+  assert.equal(pkg.devDependencies["@shadcn/lint"], "0.2.1");
+  assert.equal(
+    json(join(root, "package.json")).scripts["lint:components"],
+    "pnpm --filter @acme/components run lint",
+  );
+  assert.match(
+    readFileSync(join(root, "justfile"), "utf8"),
+    /lint_components:\n  pnpm run lint:components\n/,
+  );
+});
+
+test("scaffold-library ships a starter token map and its generated theme", () => {
+  const root = pnpmRoot();
+  assert.equal(run("install.mjs", root).status, 0);
+  assert.equal(
+    run("scaffold-library.mjs", root, "--alias", "@acme/components").status,
+    0,
+  );
+  assert.ok(existsSync(join(root, "tools/ce-pattern/generate-tokens.mjs")));
+  assert.ok(json(join(root, "components/tokens.json")).colors.roles.primary);
+  assert.match(
+    readFileSync(join(root, "components/generated/tokens.css"), "utf8"),
+    /--color-primary: var\(--primary\);/,
+  );
+  assert.match(
+    readFileSync(join(root, "components/styles.css"), "utf8"),
+    /@import "\.\/generated\/tokens\.css";/,
+  );
+  const scripts = json(join(root, "package.json")).scripts;
+  assert.equal(
+    scripts["generate:tokens"],
+    "node tools/ce-pattern/generate-tokens.mjs",
+  );
+  assert.equal(
+    scripts["check:tokens"],
+    "node tools/ce-pattern/generate-tokens.mjs --check",
+  );
+  const check = spawnSync(
+    "node",
+    [join(root, "tools/ce-pattern/generate-tokens.mjs"), "--check"],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(check.status, 0, check.stderr);
+});
+
+test("scaffold-library vendors the core check beside the registry script", () => {
+  const root = pnpmRoot();
+  assert.equal(run("install.mjs", root).status, 0);
+  assert.equal(
+    run("scaffold-library.mjs", root, "--alias", "@acme/components").status,
+    0,
+  );
+  assert.ok(existsSync(join(root, "tools/ce-pattern/check-shadcn-core.mjs")));
+  assert.ok(!existsSync(join(root, "components/check-shadcn-core.mjs")));
+  assert.equal(
+    json(join(root, "package.json")).scripts["check:shadcn-core"],
+    "node tools/ce-pattern/check-shadcn-core.mjs",
+  );
+  assert.match(
+    readFileSync(join(root, "justfile"), "utf8"),
+    /check_shadcn_core:\n  pnpm run check:shadcn-core\n/,
+  );
+});
+
+test("scaffold-library runs the styling lint through the target's package manager", () => {
+  const root = scratch();
+  assert.equal(run("install.mjs", root).status, 0);
+  assert.equal(
+    run("scaffold-library.mjs", root, "--alias", "@acme/components").status,
+    0,
+  );
+  assert.equal(
+    json(join(root, "package.json")).scripts["lint:components"],
+    "npm run lint --workspace components",
+  );
+  assert.match(
+    readFileSync(join(root, "justfile"), "utf8"),
+    /lint_components:\n  npm run lint:components\n/,
+  );
+});
+
 test("scaffold-library appends to an existing justfile and workspace, and refuses a second section", () => {
   const root = pnpmRoot();
   writeFileSync(

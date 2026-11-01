@@ -49,14 +49,17 @@ node .claude/skills/install-ce-pattern/scripts/add-consumer.mjs --dir app --laye
 ```
 
 Add `oxc-parser` and `tsx` as dev dependencies with your package manager, at the versions in
-`tools/ce-pattern/versions.json`, install with lifecycle scripts disabled, then record provenance:
+`tools/ce-pattern/versions.json`, install with lifecycle scripts disabled, then record provenance.
+A `react-shadcn` library pins `oxlint` and `@shadcn/lint` in its own `package.json`, so the same
+install brings them:
 
 ```bash
 node .claude/skills/install-ce-pattern/scripts/write-upstream.mjs --ref v0.1.0 --commit <sha>
 ```
 
-Run `check:component-layers` with your package manager's run command. Every script refuses to
-overwrite an existing destination and prints one line per file it writes. Nothing runs Git.
+Run `check:component-layers` with your package manager's run command, and on `react-shadcn` also
+`check:tokens` and `lint:components`. Every script refuses to overwrite an existing destination
+and prints one line per file it writes. Nothing runs Git.
 
 ## The Three Layers
 
@@ -224,8 +227,9 @@ ce-pattern-kit/
 │       ├── tools/ce-pattern/            vendored verbatim: checker, CLI, tests, twelve fixture
 │       │                                scenarios, rules document (rendered from this README),
 │       │                                justfile fragment
-│       └── presets/react-shadcn/        library package files with three tokens, the registry
-│                                        import script, its justfile fragment
+│       └── presets/react-shadcn/        library package files with four tokens, a starter token
+│                                        map, the Rule 8 lint config, the registry import, core
+│                                        check and token generator scripts, their justfile fragment
 ├── skills/
 │   ├── install-ce-pattern/              SKILL.md, references/, byte copies of src/scripts and src/assets
 │   └── classify-component/              SKILL.md
@@ -253,16 +257,21 @@ target/
 │   ├── test-fixtures/component-layers/  twelve scenario trees
 │   ├── README_COMPONENT_SYSTEM.md       the rules
 │   ├── add-shadcn-items.mjs             registry import with the pinned CLI and alias rewrite
+│   ├── check-shadcn-core.mjs            Rule 7: core compared with the pinned registry release
 │   ├── versions.json  ce-pattern.json   pins; recorded choices (tooling dir, library, consumers)
 │   └── UPSTREAM.md                      provenance: source, ref, commit, paths, deviations
 ├── components/                          @scope/components: package.json, tsconfig.json,
-│   ├── components.json  styles.css      components.json, lib/utils.ts, index.ts
+│   ├── components.json  styles.css      components.json, lib/utils.ts, index.ts,
+│   ├── .oxlintrc.json                   the Rule 8 lint, pinned oxlint and @shadcn/lint
+│   ├── tokens.json                      the token map: palette, light and dark roles, theme scales
+│   ├── generated/tokens.css             its generated theme, imported by styles.css
 │   ├── lib/utils.ts  index.ts
 │   └── component-{core,elements,patterns}/   appear with their first file
 ├── app/                                 consumer: workspace dependency on the library;
 │   └── src/component-core/index.ts      with --layers all, a barrel of named re-exports
 ├── justfile                             # --- CE pattern --- section appended or created
-├── package.json                         check:component-layers, add:shadcn
+├── package.json                         check:component-layers, add:shadcn, check:shadcn-core,
+│                                        generate:tokens, check:tokens, lint:components
 └── pnpm-workspace.yaml or workspaces    library and consumers added, per your package manager
 ```
 
@@ -286,7 +295,96 @@ advisory flags a pattern that would pass as an element; it never fails the gate.
 Vendor registry items into core with `just add_shadcn_atoms button`, or `add:shadcn button`
 through your package manager's run command. The script runs the pinned shadcn CLI, removes the
 phantom `cn` dependency the registry declares, and rewrites `@/` imports to the library alias in
-core, patterns, and `lib`.
+core, patterns, and `lib`. It holds core to Rule 7:
+
+- **Item names only.** A local path, a URL or a `.json` item is refused, so a modified copy can't
+  enter core.
+- **No silent overwrite.** A dry run lists the files first; if any already exist and differ from
+  the registry, nothing is written unless you pass `OVERWRITE=true` (`--overwrite`).
+- **No partial vendor.** A listed file the CLI leaves unwritten fails the run.
+
+`just check_shadcn_core` (`check:shadcn-core`) compares every file in `component-core` with the
+pinned registry release through the CLI's own diff, ignoring the kit's import rewrites, and fails
+on any other difference. It also fails while a `registry/` folder exists in the library, the
+usual home of a fork. A drifted file is re-vendored with `just add_shadcn_atoms <name> true`; the
+look it carried moves to an element or the token map.
+
+### The token map
+
+The `react-shadcn` preset gives the library `tokens.json`, a starter map with shadcn's neutral
+palette, and `generated/tokens.css`, which `styles.css` imports. Edit the map, then run
+`just generate_tokens`; `just check_tokens` fails when the generated file is out of date. Never
+edit `generated/`.
+
+```json
+{
+  "colors": {
+    "primitives": {
+      "white": "oklch(1 0 0)",
+      "neutral-900": "oklch(0.145 0 0)"
+    },
+    "roles": { "background": { "light": "{white}", "dark": "{neutral-900}" } }
+  },
+  "theme": {
+    "radius": { "lg": "0.625rem" },
+    "spacing": { "control-height": "1.75rem" }
+  }
+}
+```
+
+- **Primitives** are raw values, written once.
+- **Roles** are what components use. Each names a primitive for light and for dark, in braces, and
+  becomes a Tailwind colour: `background` gives `bg-background`, switched by the `.dark` class.
+- **Theme** groups use Tailwind's own namespaces (`spacing`, `radius`, `text`, `font`,
+  `font-weight`, `leading`, `tracking`, `shadow`, `inset-shadow`, `drop-shadow`, `blur`, `ease`,
+  `animate`, `breakpoint`, `container`, `aspect`), so `spacing.control-height` gives
+  `h-control-height`. Values are CSS strings.
+
+The generator refuses a role that names a missing primitive or lacks light or dark, an unknown
+namespace, and a value that isn't a string. The lint reads the generated theme: a class from the
+map passes, any other colour or class is refused.
+
+**Inside a host app.** When the library renders inside another app's theme, such as an editor
+plugin, add `host-vars.json` beside the map. It names the host's scoping selector and, for every
+role, the host variable to follow, or `null` to keep the map's value:
+
+```json
+{
+  "selector": ".my-plugin",
+  "roles": { "background": "--background-primary", "destructive": null }
+}
+```
+
+`null` is allowed only where the role's light and dark values are the same, because the host
+decides light and dark. The generator writes `generated/host-vars.css`; import it after
+`tokens.css`.
+
+### Lint for Rule 8
+
+The `react-shadcn` preset gives the library an oxlint config, `.oxlintrc.json`, running
+[`@shadcn/lint`](https://github.com/shadcn-ui/lint). Run it with `just lint_components`, or
+`lint:components` through your package manager's run command.
+
+| Rule                            | Refuses                                                                                                                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shadcn/no-restyle`             | In patterns, any class on a core or elements component beyond layout, and any fixed height or size. In elements, anything beyond layout, spacing, type, colour, shape and effects, and blend modes. |
+| `shadcn/no-raw-colors`          | Colours that aren't theme classes, such as hex or `rgb()`, in any string.                                                                                                                           |
+| `shadcn/no-arbitrary-values`    | Bracketed values such as `w-[13px]`, in any string.                                                                                                                                                 |
+| `shadcn/no-inline-styles`       | `style` props.                                                                                                                                                                                      |
+| `shadcn/no-unknown-classes`     | Classes Tailwind and the theme don't define.                                                                                                                                                        |
+| `shadcn/require-static-classes` | Classes on core and elements components that the linter can't read, such as `` `gap-${n}` ``.                                                                                                       |
+| `react/forbid-elements`         | 25 plain HTML elements with a core equivalent, such as `<button>`, `<table>` and `<dialog>`.                                                                                                        |
+| `no-restricted-imports`         | `@/` imports; layers are imported through the library alias.                                                                                                                                        |
+
+`component-core` is ignored: it is the vendor's (Rules 1 and 7). Your own states and contracts are
+additions to the config, not changes to core:
+
+- **A state variant an element may set**, such as `data-selected:*`: add it to the elements
+  override's `allow` list.
+- **A component that owns more or less than its layer**: add a `contracts` entry with its name
+  pattern and its own `allow` list.
+- **A plain element with no core equivalent yet**: vendor one, or remove that tag from
+  `react/forbid-elements` on purpose.
 
 - **Add a consumer:** `add-consumer.mjs --dir <dir> --layers none|patterns|all`, then rerun the
   check. The roots list in `check:component-layers` follows `ce-pattern.json`.
@@ -307,7 +405,7 @@ In this repository:
 | `format`                | Prettier and markdownlint fixes                                  |
 | `typecheck`             | `tsc --noEmit` over scripts, checker, tools                      |
 | `test`                  | Checker tests, script tests, golden test                         |
-| `check_example`         | Classify and type-check `examples/react-shadcn`                  |
+| `check_example`         | Classify, type-check and lint `examples/react-shadcn`            |
 | `regenerate_example`    | Rerun the scripts into the example; layer files and barrels kept |
 | `sync_skill_assets`     | Copy `src/scripts` and `src/assets` into the install skill       |
 | `check_skill_assets`    | Fail when the skill's copy differs from `src`                    |
@@ -316,7 +414,7 @@ In this repository:
 | `check_renovate_config` | Validate `renovate.json`                                         |
 
 `just check` runs: Prettier, justfile format, Markdown lint, type-check, skill-asset sync, tests,
-and the example's classification and type-checks.
+and the example's classification, type-checks and Rule 8 lint.
 
 In a target repository, after install:
 
@@ -325,6 +423,12 @@ In a target repository, after install:
 | `just check_component_layers`                        | Vendored tests, then classification of every root    |
 | `<pm> run check:component-layers`                    | The same through your package manager                |
 | `just add_shadcn_atoms button`                       | Vendor registry items into core; alias imports fixed |
+| `just check_shadcn_core`                             | Compare core with the registry (Rule 7)              |
+| `<pm> run check:shadcn-core`                         | The same through your package manager                |
+| `just generate_tokens`                               | Regenerate the theme from the token map (Rule 8)     |
+| `just check_tokens`                                  | Fail when the generated theme is out of date         |
+| `just lint_components`                               | Lint the library for Rule 8                          |
+| `<pm> run lint:components`                           | The same through your package manager                |
 | `<pm> run add:shadcn button`                         | The same through your package manager                |
 | `tsx tools/ce-pattern/check-component-layers.ts a b` | Classify arbitrary roots                             |
 
@@ -337,7 +441,13 @@ In a target repository, after install:
 - The checker parses TypeScript and JavaScript modules only. Single-file component formats such
   as `.vue` or `.svelte` are not classified.
 - Namespace and default imports through a barrel count nothing; named imports are traced.
-- No visual tokens, theming, or build setup. The library is source-consumed by its consumers.
+- The core check needs the network and runs the shadcn CLI once per core file, so it suits a
+  pre-push hook or CI better than every save.
+- Rule 8's lint ships with the `react-shadcn` preset only. `require-static-classes` reads classes
+  on core and elements components, not on plain HTML elements.
+- The token map covers colours and Tailwind's theme namespaces only; values with no namespace,
+  such as durations, stay in your own CSS. No build setup: the library is source-consumed by its
+  consumers.
 
 ## Development
 

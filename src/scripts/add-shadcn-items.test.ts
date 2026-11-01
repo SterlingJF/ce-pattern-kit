@@ -3,6 +3,8 @@ import { test } from "node:test";
 
 import {
   parseArguments,
+  parsePlan,
+  refuseOverwrites,
   rewriteAliasImports,
 } from "../assets/presets/react-shadcn/add-shadcn-items.mjs";
 
@@ -49,4 +51,59 @@ test("arguments split names, flags, and the terminator", () => {
     /At least one registry item/,
   );
   assert.throws(() => parseArguments(["--bogus", "button"]), /Unknown option/);
+});
+
+test("a local path, a URL, or a JSON item is refused, since core is never forked", () => {
+  for (const name of [
+    "./registry/button.json",
+    "button.json",
+    "https://example.com/r/button.json",
+    "registry/button",
+  ]) {
+    assert.throws(
+      () => parseArguments([name]),
+      /is not a registry item name: core is never forked \(Rule 7\)/,
+      name,
+    );
+  }
+  assert.deepEqual(parseArguments(["alert-dialog"]).names, ["alert-dialog"]);
+});
+
+const dryRun = [
+  "◇ Checking registry.",
+  "┌ Dry run",
+  "│",
+  "│ ~ component-core/button.tsx        overwrite",
+  "│ + component-core/field.tsx         create",
+  "│ = lib/utils.ts                     skip (identical)",
+  "│",
+  "│ 3 files, 1 dep",
+  "└",
+].join("\n");
+
+test("the dry run's plan is read file by file", () => {
+  assert.deepEqual(parsePlan(dryRun), [
+    { path: "component-core/button.tsx", action: "overwrite" },
+    { path: "component-core/field.tsx", action: "create" },
+    { path: "lib/utils.ts", action: "skip" },
+  ]);
+  assert.deepEqual(
+    parsePlan("\u001b[2m│ + component-core/kbd.tsx  create\u001b[0m"),
+    [{ path: "component-core/kbd.tsx", action: "create" }],
+  );
+});
+
+test("files that differ from the registry are not overwritten without --overwrite", () => {
+  const plan = parsePlan(dryRun);
+  assert.throws(
+    () => refuseOverwrites(plan, false),
+    /Nothing vendored: component-core\/button\.tsx already exist and differ from the registry/,
+  );
+  assert.doesNotThrow(() => refuseOverwrites(plan, true));
+  assert.doesNotThrow(() =>
+    refuseOverwrites(
+      [{ path: "component-core/kbd.tsx", action: "create" }],
+      false,
+    ),
+  );
 });

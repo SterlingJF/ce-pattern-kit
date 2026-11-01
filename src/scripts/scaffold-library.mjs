@@ -12,13 +12,16 @@ import {
   editJson,
   isDirectory,
   main,
+  managerCommands,
   parseArguments,
   readConfig,
   render,
   report,
   setCheckerScript,
+  workspaceRun,
   writeJson,
 } from "./lib.mjs";
+import { renderTokens } from "../assets/presets/react-shadcn/generate-tokens.mjs";
 
 const presets = ["react-shadcn", "none"];
 
@@ -45,10 +48,12 @@ export function scaffoldLibrary(argv) {
     throw new Error(
       `Refusing to overwrite ${options.dir}/. Use --dir for another destination or follow references/update.md.`,
     );
+  const manager = config.packageManager ?? "npm";
   const tokens = {
     ALIAS: options.alias,
     STYLE: options.style,
     LIBRARY_DIR: options.dir,
+    RUN: managerCommands(manager).run,
   };
   const plan = new Plan(options.root);
   const sections = [
@@ -56,14 +61,25 @@ export function scaffoldLibrary(argv) {
   ];
   if (options.preset === "react-shadcn") {
     const preset = join(assetsDir, "presets", "react-shadcn");
-    plan.addTree(preset, libraryDir, tokens, [
-      "justfile.ce",
+    const tooling = [
       "add-shadcn-items.mjs",
-    ]);
+      "check-shadcn-core.mjs",
+      "generate-tokens.mjs",
+    ];
+    plan.addTree(preset, libraryDir, tokens, ["justfile.ce", ...tooling]);
     plan.add(
-      join(options.root, config.tooling, "add-shadcn-items.mjs"),
-      readFileSync(join(preset, "add-shadcn-items.mjs"), "utf8"),
+      join(libraryDir, "generated", "tokens.css"),
+      renderTokens(
+        JSON.parse(readFileSync(join(preset, "tokens.json"), "utf8")),
+        "tokens.json",
+      ),
     );
+    for (const file of tooling) {
+      plan.add(
+        join(options.root, config.tooling, file),
+        readFileSync(join(preset, file), "utf8"),
+      );
+    }
     sections.push(
       render(readFileSync(join(preset, "justfile.ce"), "utf8"), tokens),
     );
@@ -88,16 +104,19 @@ export function scaffoldLibrary(argv) {
   const written = plan.commit();
   const justfile = appendJustfileSection(options.root, sections.join(""));
   written.push(`justfile (${justfile})`);
-  const workspaceFile = addWorkspacePackage(
-    options.root,
-    options.dir,
-    config.packageManager ?? "npm",
-  );
+  const workspaceFile = addWorkspacePackage(options.root, options.dir, manager);
   if (workspaceFile) written.push(workspaceFile);
   if (options.preset === "react-shadcn") {
     editJson(join(options.root, "package.json"), (pkg) => {
       pkg.scripts ??= {};
       pkg.scripts["add:shadcn"] = `node ${config.tooling}/add-shadcn-items.mjs`;
+      pkg.scripts["check:shadcn-core"] =
+        `node ${config.tooling}/check-shadcn-core.mjs`;
+      pkg.scripts["generate:tokens"] =
+        `node ${config.tooling}/generate-tokens.mjs`;
+      pkg.scripts["check:tokens"] =
+        `node ${config.tooling}/generate-tokens.mjs --check`;
+      pkg.scripts["lint:components"] = workspaceRun(manager, options, "lint");
     });
   }
   config.library = {

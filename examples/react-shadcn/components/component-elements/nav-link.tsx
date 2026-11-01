@@ -9,5 +9,5 @@ export function NavLink({
   active = false,
   ...props
 }: ComponentProps<typeof Button> & { active?: boolean }) {
-  return <Button className={navLinkVariants(active)} {...props} />;
+  return <Button variant={active ? "default" : "ghost"} size="sm" {...props} />;
 }

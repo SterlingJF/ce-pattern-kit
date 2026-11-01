@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./generated/tokens.css";
+@custom-variant dark (&:is(.dark *));
 @source "./component-core";
 @source "./component-elements";
 @source "./component-patterns";

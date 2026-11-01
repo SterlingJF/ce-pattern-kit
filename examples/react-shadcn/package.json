@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "check:component-layers": "node --import tsx --test tools/ce-pattern/component-layers.test.ts && tsx tools/ce-pattern/check-component-layers.ts components app",
-    "add:shadcn": "node tools/ce-pattern/add-shadcn-items.mjs"
+    "add:shadcn": "node tools/ce-pattern/add-shadcn-items.mjs",
+    "check:shadcn-core": "node tools/ce-pattern/check-shadcn-core.mjs",
+    "generate:tokens": "node tools/ce-pattern/generate-tokens.mjs",
+    "check:tokens": "node tools/ce-pattern/generate-tokens.mjs --check",
+    "lint:components": "pnpm --filter @acme/components run lint"
   }
 }

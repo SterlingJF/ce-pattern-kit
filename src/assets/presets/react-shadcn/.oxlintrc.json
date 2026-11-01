@@ -1,0 +1,177 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react"],
+  "jsPlugins": ["@shadcn/lint"],
+  "ignorePatterns": ["node_modules/**", "component-core/**", "generated/**"],
+  "settings": {
+    "shadcn": {
+      "componentImports": ["(^|/)component-(core|elements)(/|$)"],
+      "note": "Design values come from the token map (Rule 8): add a token there, then use its class."
+    }
+  },
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "regex": "^@/",
+            "message": "Import component layers through the library alias, __CE_ALIAS__."
+          }
+        ]
+      }
+    ],
+    "shadcn/no-restyle": [
+      "error",
+      {
+        "allow": ["layout"],
+        "deny": ["h-*", "min-h-*", "max-h-*", "size-*"],
+        "message": "\"{{className}}\" is not allowed on <{{component}}>, which owns its {{category}}. Patterns only place core components (Rule 8): give the look to an element, with token classes."
+      }
+    ],
+    "shadcn/no-raw-colors": [
+      "error",
+      {
+        "scanAllStrings": true
+      }
+    ],
+    "shadcn/no-arbitrary-values": [
+      "error",
+      {
+        "scanAllStrings": true
+      }
+    ],
+    "shadcn/no-inline-styles": "error",
+    "shadcn/no-unknown-classes": "error",
+    "shadcn/require-static-classes": "error",
+    "react/forbid-elements": [
+      "error",
+      {
+        "forbid": [
+          {
+            "element": "button",
+            "message": "<button> has a core component: use Button from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms button`."
+          },
+          {
+            "element": "input",
+            "message": "<input> has a core component: use Input or Checkbox from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms input`."
+          },
+          {
+            "element": "label",
+            "message": "<label> has a core component: use Label from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms label`."
+          },
+          {
+            "element": "textarea",
+            "message": "<textarea> has a core component: use Textarea from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms textarea`."
+          },
+          {
+            "element": "select",
+            "message": "<select> has a core component: use Select from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms select`."
+          },
+          {
+            "element": "option",
+            "message": "<option> has a core component: use SelectItem from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms select`."
+          },
+          {
+            "element": "optgroup",
+            "message": "<optgroup> has a core component: use SelectGroup from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms select`."
+          },
+          {
+            "element": "progress",
+            "message": "<progress> has a core component: use Progress from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms progress`."
+          },
+          {
+            "element": "meter",
+            "message": "<meter> has a core component: use Progress from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms progress`."
+          },
+          {
+            "element": "hr",
+            "message": "<hr> has a core component: use Separator from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms separator`."
+          },
+          {
+            "element": "table",
+            "message": "<table> has a core component: use Table from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms table`."
+          },
+          {
+            "element": "thead",
+            "message": "<thead> has a core component: use TableHeader from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms table`."
+          },
+          {
+            "element": "tbody",
+            "message": "<tbody> has a core component: use TableBody from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms table`."
+          },
+          {
+            "element": "tfoot",
+            "message": "<tfoot> has a core component: use TableFooter from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms table`."
+          },
+          {
+            "element": "tr",
+            "message": "<tr> has a core component: use TableRow from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms table`."
+          },
+          {
+            "element": "th",
+            "message": "<th> has a core component: use TableHead from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms table`."
+          },
+          {
+            "element": "td",
+            "message": "<td> has a core component: use TableCell from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms table`."
+          },
+          {
+            "element": "caption",
+            "message": "<caption> has a core component: use TableCaption from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms table`."
+          },
+          {
+            "element": "dialog",
+            "message": "<dialog> has a core component: use Dialog or AlertDialog from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms dialog`."
+          },
+          {
+            "element": "fieldset",
+            "message": "<fieldset> has a core component: use FieldSet from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms field`."
+          },
+          {
+            "element": "legend",
+            "message": "<legend> has a core component: use FieldLegend from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms field`."
+          },
+          {
+            "element": "details",
+            "message": "<details> has a core component: use Collapsible from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms collapsible`."
+          },
+          {
+            "element": "summary",
+            "message": "<summary> has a core component: use CollapsibleTrigger from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms collapsible`."
+          },
+          {
+            "element": "kbd",
+            "message": "<kbd> has a core component: use Kbd from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms kbd`."
+          },
+          {
+            "element": "menu",
+            "message": "<menu> has a core component: use DropdownMenu from component-core (Rule 8). Vendor it unchanged with `just add_shadcn_atoms dropdown-menu`."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["component-elements/**"],
+      "rules": {
+        "shadcn/no-restyle": [
+          "error",
+          {
+            "allow": [
+              "layout",
+              "spacing",
+              "typography",
+              "color",
+              "shape",
+              "effects"
+            ],
+            "deny": ["mix-blend-*", "bg-blend-*"],
+            "message": "\"{{className}}\" is not allowed on <{{component}}>, which owns its {{category}}. An element may set layout, spacing, type, colour, shape and effects from the token map, without blend modes (Rule 8). Core is never edited or forked (Rules 1 and 7)."
+          }
+        ]
+      }
+    }
+  ]
+}

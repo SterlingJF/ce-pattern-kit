@@ -235,6 +235,17 @@ export function managerCommands(name) {
   return commands;
 }
 
+export function workspaceRun(manager, library, script) {
+  const table = {
+    pnpm: `pnpm --filter ${library.alias} run ${script}`,
+    npm: `npm run ${script} --workspace ${library.dir}`,
+    yarn: `yarn workspace ${library.alias} run ${script}`,
+    bun: `bun run --filter ${library.alias} ${script}`,
+  };
+  managerCommands(manager);
+  return table[manager];
+}
+
 export function workspaceDependency(name) {
   return name === "npm" ? "*" : "workspace:*";
 }
