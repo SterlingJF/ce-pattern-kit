@@ -43,6 +43,18 @@ barrel of named re-exports over the library. A `components/` directory beside th
 reported as advice, never refused. Ask, per consumer package: its directory, whether it exists or
 is to be created, and `none | patterns | all`. Repeat until the owner says there are no more.
 
+## On adopt: Rules 7 and 8
+
+Reading: `scaffold-library.mjs` refuses an existing library, so on adopt the Rule 7 core check, the
+Rule 8 lint and the token map come from `add-styling.mjs` instead. It needs a shadcn library (a
+`components.json`), builds `tokens.json` from the light and dark roles the library's CSS already
+declares, and refuses to overwrite anything, including an existing `lint` script. Ask: add them
+(recommended for a React and shadcn library), or not now. If added, run it, then walk the owner
+through its `next:` lines: the CSS declarations that move into the token map, and any variable
+that is not a colour role. Existing lint refusals are findings for the owner, not reasons to
+loosen the config; a state or contract the library already uses is added to the lint config with
+the owner and recorded under Deviations.
+
 ## After a non-preset answer
 
 Run `install.mjs` and `scaffold-library.mjs --preset none`. Then, in turn: confirm whether the

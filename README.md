@@ -49,6 +49,12 @@ node .claude/skills/install-ce-pattern/scripts/scaffold-library.mjs --preset rea
 node .claude/skills/install-ce-pattern/scripts/add-consumer.mjs --dir app --layers all --create --alias @scope/app
 ```
 
+On an existing shadcn library, instead of scaffolding:
+
+```bash
+node .claude/skills/install-ce-pattern/scripts/add-styling.mjs --dir components
+```
+
 Add `oxc-parser` and `tsx` as dev dependencies with your package manager, at the versions in
 `tools/ce-pattern/versions.json`, install with lifecycle scripts disabled, then record provenance.
 A `react-shadcn` library pins `oxlint` and `@shadcn/lint` in its own `package.json`, so the same
@@ -222,7 +228,7 @@ A file in `component-patterns` promises a purposeful composition of lower-layer 
 ce-pattern-kit/
 ├── src/                                 source of truth, laid out like the skill directory
 │   ├── scripts/                         zero-dependency Node scripts: install, scaffold-library,
-│   │                                    add-consumer, write-upstream, and their tests
+│   │                                    add-styling, add-consumer, write-upstream, and their tests
 │   └── assets/
 │       ├── versions.json                every pin a target receives (oxc-parser, tsx, shadcn)
 │       ├── tools/ce-pattern/            vendored verbatim: checker, CLI, tests, twelve fixture
@@ -289,9 +295,20 @@ node .claude/skills/install-ce-pattern/scripts/install.mjs --roots components,ap
 ```
 
 That vendors `tools/ce-pattern/` and wires `check:component-layers` over the named roots, writing
-nothing into existing layers. Placing a new component is `/classify-component`: read the count,
-place the file, run the check, act on the verdict line. A refusal names the rule and the count. An
-advisory flags a pattern that would pass as an element; it never fails the gate.
+nothing into existing layers. To bring Rules 7 and 8 to an existing shadcn library as well:
+
+```bash
+node .claude/skills/install-ce-pattern/scripts/add-styling.mjs --dir components
+```
+
+It writes the lint config, a `tokens.json` built from the light and dark variables your CSS
+already declares, and its generated theme; vendors the core check and token generator; and adds
+the scripts and recipes. It refuses to overwrite any file or an existing `lint` script, and ends
+with `next:` lines naming the CSS declarations to replace with the generated import.
+
+Placing a new component is `/classify-component`: read the count, place the file, run the check,
+act on the verdict line. A refusal names the rule and the count. An advisory flags a pattern that
+would pass as an element; it never fails the gate.
 
 Vendor registry items into core with `just add_shadcn_atoms button`, or `add:shadcn button`
 through your package manager's run command. The script runs the pinned shadcn CLI, removes the

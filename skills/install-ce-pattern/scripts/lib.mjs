@@ -293,14 +293,14 @@ export function addWorkspacePackage(root, directory, manager) {
   return changed ? "package.json" : null;
 }
 
-export function appendJustfileSection(root, section) {
+export function appendJustfileSection(root, section, marker = banner) {
   const path = join(root, "justfile");
   if (!existsSync(path)) {
     writeFileSync(path, `default:\n  @just --list\n\n${section}`);
     return "created";
   }
   const current = readFileSync(path, "utf8");
-  if (current.includes(banner)) throw refusal("justfile (CE pattern section)");
+  if (current.includes(marker)) throw refusal(`justfile (${marker})`);
   writeFileSync(path, `${current.replace(/\n*$/, "\n\n")}${section}`);
   return "appended";
 }

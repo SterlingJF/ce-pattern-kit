@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -295,6 +301,130 @@ test("scaffold-library appends to an existing justfile and workspace, and refuse
   assert.ok(existsSync(join(root, "ui/README.md")));
   assert.equal(readFileSync(join(root, "ui/index.ts"), "utf8"), "export {};\n");
   assert.ok(!existsSync(join(root, "tools/ce-pattern/add-shadcn-items.mjs")));
+});
+
+const shadcnLibrary = (root: string) => {
+  mkdirSync(join(root, "components/component-core"), { recursive: true });
+  writeFileSync(
+    join(root, "components/package.json"),
+    '{ "name": "@acme/components", "scripts": { "check": "tsc" } }\n',
+  );
+  writeFileSync(
+    join(root, "components/components.json"),
+    '{ "style": "base-vega", "tailwind": { "css": "app.css" } }\n',
+  );
+  writeFileSync(
+    join(root, "components/app.css"),
+    [
+      '@import "tailwindcss";',
+      ":root {",
+      "  --radius: 0.625rem;",
+      "  --background: oklch(1 0 0);",
+      "  --destructive: oklch(0.577 0.245 27.325);",
+      "}",
+      ".dark {",
+      "  --background: oklch(0.145 0 0);",
+      "  --destructive: oklch(0.577 0.245 27.325);",
+      "}",
+      "",
+    ].join("\n"),
+  );
+};
+
+test("add-styling brings Rules 7 and 8 to an adopted shadcn library", () => {
+  const root = pnpmRoot();
+  shadcnLibrary(root);
+  assert.equal(run("install.mjs", root, "--roots", "components").status, 0);
+  const result = run("add-styling.mjs", root, "--dir", "components");
+  assert.equal(result.status, 0, result.stderr);
+  const lint = json(join(root, "components/.oxlintrc.json"));
+  assert.match(
+    lint.rules["no-restricted-imports"][1].patterns[0].message,
+    /@acme\/components/,
+  );
+  assert.deepEqual(json(join(root, "components/tokens.json")).colors, {
+    primitives: {
+      "background-light": "oklch(1 0 0)",
+      "background-dark": "oklch(0.145 0 0)",
+      destructive: "oklch(0.577 0.245 27.325)",
+    },
+    roles: {
+      background: { light: "{background-light}", dark: "{background-dark}" },
+      destructive: { light: "{destructive}", dark: "{destructive}" },
+    },
+  });
+  assert.match(
+    readFileSync(join(root, "components/generated/tokens.css"), "utf8"),
+    /--color-background: var\(--background\);/,
+  );
+  for (const file of [
+    "add-shadcn-items.mjs",
+    "check-shadcn-core.mjs",
+    "generate-tokens.mjs",
+  ]) {
+    assert.ok(existsSync(join(root, "tools/ce-pattern", file)), file);
+  }
+  const library = json(join(root, "components/package.json"));
+  assert.equal(library.scripts.check, "tsc");
+  assert.equal(library.scripts.lint, "oxlint --deny-warnings .");
+  assert.equal(library.devDependencies.oxlint, "1.85.0");
+  const scripts = json(join(root, "package.json")).scripts;
+  assert.equal(
+    scripts["lint:components"],
+    "pnpm --filter @acme/components run lint",
+  );
+  assert.equal(
+    scripts["check:tokens"],
+    "node tools/ce-pattern/generate-tokens.mjs --check",
+  );
+  assert.match(scripts["check:component-layers"], /components$/);
+  const justfile = readFileSync(join(root, "justfile"), "utf8");
+  assert.match(justfile, /# --- CE pattern: Rules 7 and 8 ---/);
+  assert.match(justfile, /lint_components:\n  pnpm run lint:components\n/);
+  assert.deepEqual(
+    json(join(root, "tools/ce-pattern/ce-pattern.json")).library,
+    {
+      dir: "components",
+      alias: "@acme/components",
+      preset: "react-shadcn",
+      style: "base-vega",
+    },
+  );
+  assert.match(
+    result.stdout,
+    /app\.css still declares --background, --destructive/,
+  );
+  assert.match(result.stdout, /--radius is not a colour role/);
+  const again = run("add-styling.mjs", root, "--dir", "components");
+  assert.equal(again.status, 1);
+  assert.match(
+    again.stderr,
+    /Refusing to overwrite components\/\.oxlintrc\.json/,
+  );
+});
+
+test("add-styling refuses a library without a shadcn manifest, and writes nothing", () => {
+  const root = pnpmRoot();
+  mkdirSync(join(root, "ui"));
+  writeFileSync(join(root, "ui/package.json"), '{ "name": "@acme/ui" }\n');
+  assert.equal(run("install.mjs", root, "--roots", "ui").status, 0);
+  const result = run("add-styling.mjs", root, "--dir", "ui");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /ui\/components\.json/);
+  assert.ok(!existsSync(join(root, "ui/.oxlintrc.json")));
+});
+
+test("add-styling keeps an existing lint script by refusing, not replacing it", () => {
+  const root = pnpmRoot();
+  shadcnLibrary(root);
+  const pkg = json(join(root, "components/package.json"));
+  pkg.scripts.lint = "eslint .";
+  writeFileSync(join(root, "components/package.json"), JSON.stringify(pkg));
+  assert.equal(run("install.mjs", root, "--roots", "components").status, 0);
+  const result = run("add-styling.mjs", root, "--dir", "components");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /already has a lint script/);
+  assert.ok(!existsSync(join(root, "components/.oxlintrc.json")));
 });
 
 test("add-consumer creates a package with the workspace dependency and a core barrel", () => {
