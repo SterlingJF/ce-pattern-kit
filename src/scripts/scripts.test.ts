@@ -58,6 +58,10 @@ test("install vendors the tooling directory and wires the check script", () => {
     pkg.scripts["check:component-layers"],
     "node --import tsx --test tools/ce-pattern/component-layers.test.ts && tsx tools/ce-pattern/check-component-layers.ts components",
   );
+  assert.match(
+    readFileSync(join(root, "justfile"), "utf8"),
+    /# --- CE pattern -+\n[\s\S]*check_component_layers:\n  npm run check:component-layers\n/,
+  );
   assert.deepEqual(json(join(root, "tools/ce-pattern/ce-pattern.json")), {
     tooling: "tools/ce-pattern",
     packageManager: "npm",
@@ -379,7 +383,7 @@ test("add-styling brings Rules 7 and 8 to an adopted shadcn library", () => {
   );
   assert.match(scripts["check:component-layers"], /components$/);
   const justfile = readFileSync(join(root, "justfile"), "utf8");
-  assert.match(justfile, /# --- CE pattern: Rules 7 and 8 ---/);
+  assert.match(justfile, /# --- CE pattern: react-shadcn ---/);
   assert.match(justfile, /lint_components:\n  pnpm run lint:components\n/);
   assert.deepEqual(
     json(join(root, "tools/ce-pattern/ce-pattern.json")).library,

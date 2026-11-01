@@ -7,6 +7,8 @@ default:
 check_component_layers:
   pnpm run check:component-layers
 
+# --- CE pattern: react-shadcn ---
+
 # Vendor registry items into component-core with the pinned shadcn CLI and normalize alias imports.
 add_shadcn_atoms UI_NAME OVERWRITE='false' BASE='base-vega':
   #!/usr/bin/env bash

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
+  appendJustfileSection,
   assetsDir,
   detectPackageManager,
   ensureRootPackage,
@@ -14,6 +15,7 @@ import {
   parseArguments,
   Plan,
   posix,
+  render,
   report,
   setCheckerScript,
   writeJson,
@@ -32,14 +34,14 @@ export function install(argv) {
     throw new Error(`${options.root} is not a directory`);
   const tooling = posix(options.into).replace(/\/+$/, "");
   const target = join(options.root, tooling);
+  const packageManager =
+    options["package-manager"] ?? detectPackageManager(options.root);
+  const { run } = managerCommands(packageManager);
   const plan = new Plan(options.root);
-  plan.addTree(join(assetsDir, "tools", "ce-pattern"), target);
+  plan.addTree(join(assetsDir, "tools", "ce-pattern"), target, { RUN: run });
   plan.add(join(target, "versions.json"), jsonFile(readVersions()));
   plan.refuseCollisions();
   const written = plan.commit();
-  const packageManager =
-    options["package-manager"] ?? detectPackageManager(options.root);
-  managerCommands(packageManager);
   const config = { tooling, packageManager, library: null, consumers: [] };
   if (options.roots) config.roots = options.roots.split(",").filter(Boolean);
   writeJson(join(target, "ce-pattern.json"), config);
@@ -47,6 +49,11 @@ export function install(argv) {
   if (ensureRootPackage(options.root, options.name ?? undefined))
     written.push("package.json");
   setCheckerScript(options.root, withRoots(config));
+  const section = render(
+    readFileSync(join(assetsDir, "tools", "ce-pattern", "justfile.ce"), "utf8"),
+    { RUN: run },
+  );
+  written.push(`justfile (${appendJustfileSection(options.root, section)})`);
   return written;
 }
 

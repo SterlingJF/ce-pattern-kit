@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 export const assetsDir = fileURLToPath(new URL("../assets/", import.meta.url));
 export const banner = "# --- CE pattern ---";
+export const presetBanner = (preset) => `# --- CE pattern: ${preset} ---`;
 export const tokenPattern = /__CE_[A-Z_]+__/;
 
 export const posix = (path) => path.split(sep).join("/");

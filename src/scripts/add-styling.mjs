@@ -7,6 +7,7 @@ import { renderTokens } from "../assets/presets/react-shadcn/generate-tokens.mjs
 import {
   Plan,
   appendJustfileSection,
+  presetBanner,
   assetsDir,
   editJson,
   main,
@@ -20,7 +21,6 @@ import {
   writeJson,
 } from "./lib.mjs";
 
-const stylingBanner = "# --- CE pattern: Rules 7 and 8 ---";
 const declaration = /--([\w-]+)\s*:\s*([^;]+);/g;
 
 function declarations(css, selector) {
@@ -153,8 +153,8 @@ export function addStyling(argv) {
   );
   const justfile = appendJustfileSection(
     options.root,
-    `${stylingBanner}\n${fragment}`,
-    stylingBanner,
+    `${presetBanner("react-shadcn")}\n${fragment}`,
+    presetBanner("react-shadcn"),
   );
   written.push(`justfile (${justfile})`);
   config.library ??= {

@@ -8,6 +8,7 @@ import {
   jsonFile,
   addWorkspacePackage,
   appendJustfileSection,
+  presetBanner,
   assetsDir,
   editJson,
   isDirectory,
@@ -56,9 +57,7 @@ export function scaffoldLibrary(argv) {
     RUN: managerCommands(manager).run,
   };
   const plan = new Plan(options.root);
-  const sections = [
-    readFileSync(join(assetsDir, "tools", "ce-pattern", "justfile.ce"), "utf8"),
-  ];
+  let section = null;
   if (options.preset === "react-shadcn") {
     const preset = join(assetsDir, "presets", "react-shadcn");
     const tooling = [
@@ -80,9 +79,7 @@ export function scaffoldLibrary(argv) {
         readFileSync(join(preset, file), "utf8"),
       );
     }
-    sections.push(
-      render(readFileSync(join(preset, "justfile.ce"), "utf8"), tokens),
-    );
+    section = `${presetBanner(options.preset)}\n${render(readFileSync(join(preset, "justfile.ce"), "utf8"), tokens)}`;
   } else {
     plan.add(
       join(libraryDir, "package.json"),
@@ -102,8 +99,14 @@ export function scaffoldLibrary(argv) {
   }
   plan.refuseCollisions();
   const written = plan.commit();
-  const justfile = appendJustfileSection(options.root, sections.join(""));
-  written.push(`justfile (${justfile})`);
+  if (section) {
+    const justfile = appendJustfileSection(
+      options.root,
+      section,
+      presetBanner(options.preset),
+    );
+    written.push(`justfile (${justfile})`);
+  }
   const workspaceFile = addWorkspacePackage(options.root, options.dir, manager);
   if (workspaceFile) written.push(workspaceFile);
   if (options.preset === "react-shadcn") {
