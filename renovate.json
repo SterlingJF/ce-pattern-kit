@@ -1,9 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", "group:allNonMajor"],
   "osvVulnerabilityAlerts": true,
   "minimumReleaseAge": "14 days",
   "rangeStrategy": "pin",
+  "timezone": "America/New_York",
+  "schedule": ["* 12 * * *"],
+  "automergeSchedule": ["* 12 * * *"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["* 12 * * *"]
+  },
   "packageRules": [
     {
       "matchDepTypes": ["devDependencies", "dev"],
@@ -11,6 +19,9 @@
       "automerge": true
     }
   ],
+  "vulnerabilityAlerts": {
+    "automerge": true
+  },
   "ignorePaths": ["skills/**"],
   "customManagers": [
     {
