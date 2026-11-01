@@ -1,9 +1,24 @@
+import { existsSync, readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { classifyLayers, type FileReport } from "./component-layers";
 
+const configFile = fileURLToPath(new URL("./ce-pattern.json", import.meta.url));
+const config: { supportSuffixes?: unknown } = existsSync(configFile)
+  ? JSON.parse(readFileSync(configFile, "utf8"))
+  : {};
+const supportSuffixes = Array.isArray(config.supportSuffixes)
+  ? config.supportSuffixes.filter(
+      (suffix): suffix is string => typeof suffix === "string",
+    )
+  : [];
+
 const roots = process.argv.length > 2 ? process.argv.slice(2) : ["components"];
-const report = classifyLayers({ roots: roots.map((root) => resolve(root)) });
+const report = classifyLayers({
+  roots: roots.map((root) => resolve(root)),
+  supportSuffixes,
+});
 const multi = report.packages.length > 1;
 
 const verdict = (file: FileReport): string =>

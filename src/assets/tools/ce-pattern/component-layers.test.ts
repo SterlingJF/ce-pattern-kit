@@ -220,3 +220,35 @@ test("a barrel of star exports is traced to its layer files", () => {
 test("a root that is not a directory throws", () => {
   assert.throws(() => scenario("no-such-scenario"), /is not a directory/);
 });
+
+test("imports resolve through the project's tsconfig paths", () => {
+  const report = classifyLayers({
+    roots: [resolve(fixtures, "tsconfig-paths")],
+    supportSuffixes: ["gallery"],
+  });
+  assert.deepEqual(refusals(report), []);
+  assert.deepEqual(
+    file(report, "src/component-elements/primary.tsx")?.sources,
+    ["src/component-core/button.tsx"],
+  );
+  assert.equal(
+    file(report, "src/component-elements/primary.gallery.tsx"),
+    undefined,
+  );
+});
+
+test("a support suffix the project doesn't list is classified as a component", () => {
+  const report = classifyLayers({
+    roots: [resolve(fixtures, "tsconfig-paths")],
+  });
+  assert.deepEqual(refusals(report), [
+    "src/component-elements/primary.gallery.tsx: Rule 2: 2 sources; elements import from at most one",
+    "src/component-elements/primary.gallery.tsx: Rule 2: exports 1 values, imports 2",
+  ]);
+});
+
+test("a layer import no alias resolves is refused, not skipped", () => {
+  assert.deepEqual(refusals(scenario("unresolved-alias")), [
+    'component-elements/wrapped.tsx: import "~/component-core/button" names a layer, but neither package.json nor tsconfig paths resolve it',
+  ]);
+});

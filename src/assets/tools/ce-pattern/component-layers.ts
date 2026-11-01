@@ -33,6 +33,7 @@ export interface LayersReport {
 
 export interface LayersOptions {
   roots: string[];
+  supportSuffixes?: string[];
 }
 
 export const layerDirectories: Record<Layer, string> = {
@@ -52,8 +53,21 @@ const permittedImports: Record<Layer, ReadonlySet<Layer>> = {
   patterns: new Set(["core", "elements", "patterns"]),
 };
 const moduleFile = /\.[cm]?[jt]sx?$/;
-const supportFile =
-  /\.(stories|story|test|spec|fixture|fixtures|d)\.[cm]?[jt]sx?$/;
+const supportSuffixes = [
+  "stories",
+  "story",
+  "test",
+  "spec",
+  "fixture",
+  "fixtures",
+  "d",
+];
+const supportPattern = (extra: string[]): RegExp =>
+  new RegExp(
+    `\\.(${[...supportSuffixes, ...extra].join("|")})\\.[cm]?[jt]sx?$`,
+  );
+const defaultSupport = supportPattern([]);
+const layerSpecifier = /(^|\/)component-(core|elements|patterns)(\/|$)/;
 const supportDirectories = new Set([
   "fixtures",
   "__fixtures__",
@@ -72,9 +86,15 @@ const resolutions = [
 ];
 const barrelFiles = ["index.ts", "index.tsx"];
 
+interface PathAlias {
+  prefix: string;
+  target: string;
+}
+
 interface Package {
   root: string;
   alias: string;
+  paths: PathAlias[];
   base: string;
   elements: boolean;
 }
@@ -113,7 +133,7 @@ interface Traced extends Located {
   name: string;
 }
 
-type Resolution = Located | "missing" | null;
+type Resolution = Located | "missing" | "unresolved" | null;
 
 interface Context {
   packages: Package[];
@@ -127,6 +147,61 @@ function readAlias(root: string): string {
   if (!existsSync(manifest)) return "";
   const name: unknown = JSON.parse(readFileSync(manifest, "utf8")).name;
   return typeof name === "string" ? name : "";
+}
+
+function stripJsonComments(text: string): string {
+  let output = "";
+  let index = 0;
+  while (index < text.length) {
+    if (text[index] === '"') {
+      let end = index + 1;
+      while (end < text.length && text[end] !== '"')
+        end += text[end] === "\\" ? 2 : 1;
+      output += text.slice(index, end + 1);
+      index = end + 1;
+    } else if (text.startsWith("//", index)) {
+      while (index < text.length && text[index] !== "\n") index += 1;
+    } else if (text.startsWith("/*", index)) {
+      const end = text.indexOf("*/", index + 2);
+      index = end < 0 ? text.length : end + 2;
+    } else {
+      output += text[index];
+      index += 1;
+    }
+  }
+  return output.replace(/,(\s*[}\]])/g, "$1");
+}
+
+function readPaths(root: string): PathAlias[] {
+  const config = join(root, "tsconfig.json");
+  if (!existsSync(config)) return [];
+  let options: { baseUrl?: unknown; paths?: unknown } = {};
+  try {
+    options =
+      JSON.parse(stripJsonComments(readFileSync(config, "utf8")))
+        .compilerOptions ?? {};
+  } catch (error) {
+    throw new Error(
+      `${config} cannot be read, so its paths are unknown: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  const baseUrl = typeof options.baseUrl === "string" ? options.baseUrl : ".";
+  if (typeof options.paths !== "object" || options.paths === null) return [];
+  return Object.entries(options.paths).flatMap(([key, targets]) => {
+    const first: unknown = Array.isArray(targets) ? targets[0] : undefined;
+    if (
+      !key.endsWith("/*") ||
+      typeof first !== "string" ||
+      !first.endsWith("/*")
+    )
+      return [];
+    return [
+      {
+        prefix: key.slice(0, -2),
+        target: resolve(root, baseUrl, first.slice(0, -2)),
+      },
+    ];
+  });
 }
 
 function hasLayers(directory: string): boolean {
@@ -143,8 +218,15 @@ function describePackage(root: string): Package {
   const base = hasLayers(root) ? root : hasLayers(source) ? source : root;
   const elementsDir = join(base, layerDirectories.elements);
   const elements =
-    existsSync(elementsDir) && listModules(elementsDir).length > 0;
-  return { root, alias: readAlias(root), base, elements };
+    existsSync(elementsDir) &&
+    listModules(elementsDir, defaultSupport).length > 0;
+  return {
+    root,
+    alias: readAlias(root),
+    paths: readPaths(root),
+    base,
+    elements,
+  };
 }
 
 function packageOf(path: string, packages: Package[]): Package | null {
@@ -171,15 +253,16 @@ function findFile(base: string): string | null {
   return null;
 }
 
-function listModules(directory: string): string[] {
+function listModules(directory: string, support: RegExp): string[] {
   const files: string[] = [];
   for (const entry of readdirSync(directory, { withFileTypes: true }).sort(
     (a, b) => a.name.localeCompare(b.name),
   )) {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (!supportDirectories.has(entry.name)) files.push(...listModules(path));
-    } else if (moduleFile.test(entry.name) && !supportFile.test(entry.name)) {
+      if (!supportDirectories.has(entry.name))
+        files.push(...listModules(path, support));
+    } else if (moduleFile.test(entry.name) && !support.test(entry.name)) {
       files.push(path);
     }
   }
@@ -270,7 +353,15 @@ function resolveModule(
     base = resolve(dirname(from), specifier);
     pkg = packageOf(base, context.packages);
   } else {
-    for (const candidate of context.packages) {
+    const owner = packageOf(from, context.packages);
+    for (const path of owner?.paths ?? []) {
+      if (specifier.startsWith(`${path.prefix}/`)) {
+        base = resolve(path.target, specifier.slice(path.prefix.length + 1));
+        pkg = packageOf(base, context.packages);
+        break;
+      }
+    }
+    for (const candidate of pkg ? [] : context.packages) {
       if (!candidate.alias) continue;
       if (specifier === candidate.alias) {
         pkg = candidate;
@@ -291,6 +382,7 @@ function resolveModule(
         break;
       }
     }
+    if (!pkg && layerSpecifier.test(specifier)) return "unresolved";
   }
   if (!pkg || base === null) return null;
   const layer = layerOf(pkg, base);
@@ -311,7 +403,7 @@ function exportsName(
   if (module.exports.has(name)) return true;
   for (const request of module.stars) {
     const target = resolveModule(request, file, context);
-    if (target === null || target === "missing") continue;
+    if (target === null || typeof target === "string") continue;
     if (exportsName(target.file, name, context, seen)) return true;
   }
   return false;
@@ -334,7 +426,7 @@ function traceExport(
   if (entry) {
     if (entry.request === null || entry.importName === null) return null;
     const target = resolveModule(entry.request, file, context);
-    if (target === null || target === "missing") return null;
+    if (target === null || typeof target === "string") return null;
     if (target.layer !== null) {
       return { ...target, layer: target.layer, name: entry.importName };
     }
@@ -342,7 +434,7 @@ function traceExport(
   }
   for (const request of module.stars) {
     const target = resolveModule(request, file, context);
-    if (target === null || target === "missing") continue;
+    if (target === null || typeof target === "string") continue;
     if (target.layer !== null) {
       if (exportsName(target.file, name, context, new Set())) {
         return { ...target, layer: target.layer, name };
@@ -388,6 +480,12 @@ function classifyFile(
   for (const record of module.imports) {
     const target = resolveModule(record.specifier, file, context);
     if (target === null) continue;
+    if (target === "unresolved") {
+      refusals.push(
+        `import "${record.specifier}" names a layer, but neither package.json nor tsconfig paths resolve it`,
+      );
+      continue;
+    }
     if (target === "missing") {
       refusals.push(`import "${record.specifier}" resolves to no file`);
       continue;
@@ -476,6 +574,7 @@ function packageAdvisories(pkg: Package): string[] {
 export function classifyLayers(options: LayersOptions): LayersReport {
   const roots = [...new Set(options.roots.map((root) => resolve(root)))];
   const packages = roots.map(describePackage);
+  const support = supportPattern(options.supportSuffixes ?? []);
   const cache = new Map<string, ParsedModule>();
   const context: Context = {
     packages,
@@ -493,7 +592,7 @@ export function classifyLayers(options: LayersOptions): LayersReport {
     for (const layer of layers) {
       const directory = join(pkg.base, layerDirectories[layer]);
       if (!existsSync(directory)) continue;
-      for (const file of listModules(directory)) {
+      for (const file of listModules(directory, support)) {
         files.push(classifyFile(file, layer, pkg, context));
       }
     }
