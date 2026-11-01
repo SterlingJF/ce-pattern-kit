@@ -150,6 +150,7 @@ test("scaffold-library renders the react-shadcn preset and wires the workspace",
       alias: "@acme/components",
       preset: "react-shadcn",
       style: "base-vega",
+      copy: { dir: "copy", base: "en" },
     },
   );
   const again = run(
@@ -232,6 +233,40 @@ test("scaffold-library ships a starter token map and its generated theme", () =>
     { cwd: root, encoding: "utf8" },
   );
   assert.equal(check.status, 0, check.stderr);
+});
+
+test("scaffold-library ships the copy catalogue and records it (Rule 9)", () => {
+  const root = pnpmRoot();
+  assert.equal(run("install.mjs", root).status, 0);
+  assert.equal(
+    run("scaffold-library.mjs", root, "--alias", "@acme/components").status,
+    0,
+  );
+  assert.equal(
+    readFileSync(join(root, "components/copy/en.json"), "utf8"),
+    "{}\n",
+  );
+  assert.match(
+    readFileSync(join(root, "components/lib/i18n.ts"), "utf8"),
+    /from "\.\.\/copy\/en\.json"/,
+  );
+  const library = json(join(root, "components/package.json"));
+  assert.equal(library.devDependencies.i18next, "26.4.3");
+  assert.equal(library.devDependencies["react-i18next"], "17.0.16");
+  assert.ok(existsSync(join(root, "tools/ce-pattern/check-copy.mjs")));
+  assert.ok(!existsSync(join(root, "components/check-copy.mjs")));
+  assert.equal(
+    json(join(root, "package.json")).scripts["check:copy"],
+    "node tools/ce-pattern/check-copy.mjs",
+  );
+  assert.deepEqual(
+    json(join(root, "tools/ce-pattern/ce-pattern.json")).library.copy,
+    { dir: "copy", base: "en" },
+  );
+  assert.match(
+    readFileSync(join(root, "justfile"), "utf8"),
+    /check_copy:\n  pnpm run check:copy\n/,
+  );
 });
 
 test("scaffold-library vendors the core check beside the registry script", () => {
@@ -363,6 +398,7 @@ test("add-styling brings Rules 7 and 8 to an adopted shadcn library", () => {
   );
   for (const file of [
     "add-shadcn-items.mjs",
+    "check-copy.mjs",
     "check-shadcn-core.mjs",
     "generate-tokens.mjs",
   ]) {
@@ -382,6 +418,8 @@ test("add-styling brings Rules 7 and 8 to an adopted shadcn library", () => {
     "node tools/ce-pattern/generate-tokens.mjs --check",
   );
   assert.match(scripts["check:component-layers"], /components$/);
+  assert.equal(scripts["check:copy"], "node tools/ce-pattern/check-copy.mjs");
+  assert.ok(!existsSync(join(root, "components/copy")));
   const justfile = readFileSync(join(root, "justfile"), "utf8");
   assert.match(justfile, /# --- CE pattern: react-shadcn ---/);
   assert.match(justfile, /lint_components:\n  pnpm run lint:components\n/);
@@ -399,6 +437,7 @@ test("add-styling brings Rules 7 and 8 to an adopted shadcn library", () => {
     /app\.css still declares --background, --destructive/,
   );
   assert.match(result.stdout, /--radius is not a colour role/);
+  assert.match(result.stdout, /record the copy catalogue in ce-pattern\.json/);
   const again = run("add-styling.mjs", root, "--dir", "components");
   assert.equal(again.status, 1);
   assert.match(

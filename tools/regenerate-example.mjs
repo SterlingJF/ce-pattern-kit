@@ -82,7 +82,9 @@ export const isLayerFile = (file) =>
   /(^|\/)component-(core|elements|patterns)\//.test(file);
 
 export const isUserOwned = (file) =>
-  isLayerFile(file) || file === "components/index.ts";
+  isLayerFile(file) ||
+  file === "components/index.ts" ||
+  file.startsWith("components/copy/");
 
 export function regenerate() {
   const scratch = mkdtempSync(join(tmpdir(), "ce-pattern-example-"));

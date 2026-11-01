@@ -9,6 +9,7 @@
     "check:shadcn-core": "node tools/ce-pattern/check-shadcn-core.mjs",
     "generate:tokens": "node tools/ce-pattern/generate-tokens.mjs",
     "check:tokens": "node tools/ce-pattern/generate-tokens.mjs --check",
-    "lint:components": "pnpm --filter @acme/components run lint"
+    "lint:components": "pnpm --filter @acme/components run lint",
+    "check:copy": "node tools/ce-pattern/check-copy.mjs"
   }
 }

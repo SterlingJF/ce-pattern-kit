@@ -36,3 +36,7 @@ generate_tokens:
 # Fail when the generated theme is out of date with the token map.
 check_tokens:
   pnpm run check:tokens
+
+# Fail on literal text in elements and patterns, or a language that doesn't match the base (Rule 9).
+check_copy:
+  pnpm run check:copy

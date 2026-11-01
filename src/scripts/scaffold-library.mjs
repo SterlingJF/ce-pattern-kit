@@ -62,6 +62,7 @@ export function scaffoldLibrary(argv) {
     const preset = join(assetsDir, "presets", "react-shadcn");
     const tooling = [
       "add-shadcn-items.mjs",
+      "check-copy.mjs",
       "check-shadcn-core.mjs",
       "generate-tokens.mjs",
     ];
@@ -120,6 +121,7 @@ export function scaffoldLibrary(argv) {
       pkg.scripts["check:tokens"] =
         `node ${config.tooling}/generate-tokens.mjs --check`;
       pkg.scripts["lint:components"] = workspaceRun(manager, options, "lint");
+      pkg.scripts["check:copy"] = `node ${config.tooling}/check-copy.mjs`;
     });
   }
   config.library = {
@@ -128,6 +130,8 @@ export function scaffoldLibrary(argv) {
     preset: options.preset,
     style: options.preset === "react-shadcn" ? options.style : null,
   };
+  if (options.preset === "react-shadcn")
+    config.library.copy = { dir: "copy", base: "en" };
   writeJson(configFile, config);
   setCheckerScript(options.root, config);
   written.push("package.json");

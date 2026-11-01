@@ -104,7 +104,11 @@ export function addStyling(argv) {
     join(libraryDir, "generated", "tokens.css"),
     renderTokens(tokensSource, "tokens.json"),
   );
-  for (const file of ["check-shadcn-core.mjs", "generate-tokens.mjs"])
+  for (const file of [
+    "check-copy.mjs",
+    "check-shadcn-core.mjs",
+    "generate-tokens.mjs",
+  ])
     plan.add(
       join(options.root, config.tooling, file),
       readFileSync(join(preset, file), "utf8"),
@@ -133,6 +137,7 @@ export function addStyling(argv) {
   const libraryEntry = { dir, alias };
   editJson(join(options.root, "package.json"), (pkg) => {
     pkg.scripts ??= {};
+    pkg.scripts["check:copy"] = `node ${config.tooling}/check-copy.mjs`;
     pkg.scripts["add:shadcn"] ??= `node ${config.tooling}/add-shadcn-items.mjs`;
     pkg.scripts["check:shadcn-core"] =
       `node ${config.tooling}/check-shadcn-core.mjs`;
@@ -173,6 +178,10 @@ export function addStyling(argv) {
   else
     notes.push(
       `${cssName} declared no :root and .dark roles, so tokens.json starts from the kit's neutral palette; import ./generated/tokens.css from it.`,
+    );
+  if (!config.library.copy)
+    notes.push(
+      'record the copy catalogue in ce-pattern.json: add "copy": { "dir": "<folder of language files, from the library>", "base": "<base language, such as en>" } to the library entry, then run check:copy (Rule 9).',
     );
   for (const name of others)
     notes.push(

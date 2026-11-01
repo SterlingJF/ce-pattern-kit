@@ -1,0 +1,9 @@
+{
+  "search": {
+    "label": "Search",
+    "submit": "Go"
+  },
+  "hero": {
+    "start": "Start"
+  }
+}

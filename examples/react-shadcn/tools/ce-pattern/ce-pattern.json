@@ -5,7 +5,11 @@
     "dir": "components",
     "alias": "@acme/components",
     "preset": "react-shadcn",
-    "style": "base-vega"
+    "style": "base-vega",
+    "copy": {
+      "dir": "copy",
+      "base": "en"
+    }
   },
   "consumers": [
     {
