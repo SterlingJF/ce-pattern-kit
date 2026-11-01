@@ -6,7 +6,7 @@ description: Places a component file in the right CE pattern layer by the count 
 # Classify Component
 
 Classification is a count, not a judgment. A source is a file in one of the three layers; `lib/`,
-generated files, and packages are support and never count. The checker in `tools/ce-pattern/`
+generated files, packages, and files with a support suffix (`.test`, `.stories` and the like, plus any the project lists in `ce-pattern.json` `supportSuffixes`) are support and never count. The checker in `tools/ce-pattern/`
 does the counting; this skill reads its verdict and acts on it.
 
 ## Skill Terminology

@@ -231,7 +231,7 @@ ce-pattern-kit/
 │   │                                    add-styling, add-consumer, write-upstream, and their tests
 │   └── assets/
 │       ├── versions.json                every pin a target receives (oxc-parser, tsx, shadcn)
-│       ├── tools/ce-pattern/            vendored verbatim: checker, CLI, tests, twelve fixture
+│       ├── tools/ce-pattern/            vendored verbatim: checker, CLI, tests, sixteen fixture
 │       │                                scenarios, rules document (rendered from this README),
 │       │                                justfile fragment
 │       └── presets/react-shadcn/        library package files with four tokens, a starter token
@@ -261,7 +261,7 @@ target/
 │   ├── component-layers.ts              the classifier library
 │   ├── check-component-layers.ts        CLI: table per file, exit 1 on refusals
 │   ├── component-layers.test.ts         node:test over the fixtures
-│   ├── test-fixtures/component-layers/  twelve scenario trees
+│   ├── test-fixtures/component-layers/  sixteen scenario trees
 │   ├── README_COMPONENT_SYSTEM.md       the rules
 │   ├── add-shadcn-items.mjs             registry import with the pinned CLI and alias rewrite
 │   ├── check-shadcn-core.mjs            Rule 7: core compared with the pinned registry release
@@ -276,7 +276,8 @@ target/
 │   └── component-{core,elements,patterns}/   appear with their first file
 ├── app/                                 consumer: workspace dependency on the library;
 │   └── src/component-core/index.ts      with --layers all, a barrel of named re-exports
-├── justfile                             # --- CE pattern --- section appended or created
+├── justfile                             # --- CE pattern --- from install, and
+│                                        # --- CE pattern: react-shadcn --- from the preset
 ├── package.json                         check:component-layers, add:shadcn, check:shadcn-core,
 │                                        generate:tokens, check:tokens, lint:components
 └── pnpm-workspace.yaml or workspaces    library and consumers added, per your package manager
@@ -306,6 +307,36 @@ already declares, and its generated theme; vendors the core check and token gene
 the scripts and recipes. It refuses to overwrite any file or an existing `lint` script, and ends
 with `next:` lines naming the CSS declarations to replace with the generated import.
 
+### Where the kit looks
+
+The kit assumes no folder layout. Every script reads where the layers are from the project's own
+config, so a library can keep them at its root, under `src/`, or anywhere its paths say:
+
+| What                                                | Read from                                                                                                             | Used by                                         |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| The library's import aliases                        | `package.json` `name`, and `tsconfig.json` `compilerOptions.paths` (with `baseUrl`)                                   | the layer checker                               |
+| The core, patterns and `lib` folders                | `components.json` `aliases.ui`, `aliases.components` and `aliases.lib`, resolved through the library's tsconfig paths | `add-shadcn-items.mjs`, `check-shadcn-core.mjs` |
+| Extra support-file suffixes, such as `.gallery.tsx` | `ce-pattern.json` `supportSuffixes`, for example `["gallery", "harness"]`                                             | the layer checker                               |
+| The run command in the justfile                     | the package manager recorded in `ce-pattern.json`                                                                     | `install.mjs` and the preset                    |
+
+Files ending in `.stories`, `.story`, `.test`, `.spec`, `.fixture`, `.fixtures` or `.d` are
+always support. A suffix in `supportSuffixes` joins them, so a gallery or harness file can sit
+beside its component instead of moving.
+
+Nothing fails silently:
+
+- **The layer checker** refuses an import that names a layer (`component-core`,
+  `component-elements` or `component-patterns`) but resolves through neither the package name nor
+  tsconfig paths. A tsconfig it can't parse is an error.
+- **The import script and core check** stop when an alias in `components.json` matches no
+  tsconfig path.
+- **The core check** names the folder and how many files it compared, and says when it compared
+  none.
+
+The tooling directory holds the kit's own tests and fixtures, which break deliberately. Exclude
+`tools/ce-pattern/` from the target's root lint, type-check and test globs; `check:component-layers`
+runs those tests on its own.
+
 Placing a new component is `/classify-component`: read the count, place the file, run the check,
 act on the verdict line. A refusal names the rule and the count. An advisory flags a pattern that
 would pass as an element; it never fails the gate.
@@ -321,7 +352,7 @@ core, patterns, and `lib`. It holds core to Rule 7:
   the registry, nothing is written unless you pass `OVERWRITE=true` (`--overwrite`).
 - **No partial vendor.** A listed file the CLI leaves unwritten fails the run.
 
-`just check_shadcn_core` (`check:shadcn-core`) compares every file in `component-core` with the
+`just check_shadcn_core` (`check:shadcn-core`) compares every file in the core folder with the
 pinned registry release through the CLI's own diff, ignoring the kit's import rewrites, and fails
 on any other difference. It also fails while a `registry/` folder exists in the library, the
 usual home of a fork. A drifted file is re-vendored with `just add_shadcn_atoms <name> true`; the
