@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.2.2",
+  "packageManager": "pnpm@11.11.0",
   "engines": {
-    "node": ">=24"
+    "node": "v26.13.1"
   },
   "scripts": {
     "install:frozen": "pnpm install --frozen-lockfile",
@@ -25,12 +25,12 @@
     "check:skill-assets": "node tools/sync-skill-assets.mjs --check"
   },
   "devDependencies": {
-    "@types/node": "26.6.2",
+    "@types/node": "26.6.6",
     "husky": "9.1.7",
-    "markdownlint-cli2": "0.23.3",
-    "oxc-parser": "0.147.0",
-    "prettier": "3.9.8",
-    "tsx": "4.23.12",
+    "markdownlint-cli2": "0.24.1",
+    "oxc-parser": "0.158.0",
+    "prettier": "3.10.1",
+    "tsx": "4.23.15",
     "typescript": "7.0.2"
   }
 }
