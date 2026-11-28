@@ -8,3 +8,6 @@ overrides:
   katex: 0.18.11
   markdown-it: 15.0.3
   smol-toml: 1.9.1
+minimumReleaseAgeExclude:
+  # Renovate security update: pnpm@11.11.0
+  - pnpm@11.11.0
